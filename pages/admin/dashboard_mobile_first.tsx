@@ -204,7 +204,6 @@ function ProductsTab({ admin }: { admin: Admin | null }) {
   }, [])
 
   useEffect(() => {
-    // Filter categories based on search
     if (categorySearch.trim() === '') {
       setFilteredCategories(categories)
     } else {
@@ -230,11 +229,9 @@ function ProductsTab({ admin }: { admin: Admin | null }) {
 
   const handleAddProduct = async (e: React.FormEvent) => {
     e.preventDefault()
-    
-    // Use first image as main image, or placeholder
+
     const mainImageUrl = formData.image_urls.length > 0 ? formData.image_urls[0] : 'https://via.placeholder.com/300x200?text=Product+Image'
-    
-    // Create product first
+
     const { data: productData, error: productError } = await supabase.from('products').insert([
       {
         title: formData.title,
@@ -253,9 +250,8 @@ function ProductsTab({ admin }: { admin: Admin | null }) {
     ]).select()
 
     if (!productError && productData && productData[0]) {
-      // Now add each image to product_images table
       const productId = productData[0].id
-      
+
       for (const imageUrl of formData.image_urls) {
         await supabase.from('product_images').insert([
           {
@@ -265,13 +261,12 @@ function ProductsTab({ admin }: { admin: Admin | null }) {
         ])
       }
 
-      // Reset form
-      setFormData({ 
-        title: '', 
-        description: '', 
-        price: '', 
-        category_id: '', 
-        location: '', 
+      setFormData({
+        title: '',
+        description: '',
+        price: '',
+        category_id: '',
+        location: '',
         image_urls: [],
         image_url_input: '',
         condition: 'New',
@@ -293,8 +288,7 @@ function ProductsTab({ admin }: { admin: Admin | null }) {
       alert('Please enter a valid image URL')
       return
     }
-    
-    // Check if URL is already added
+
     if (formData.image_urls.includes(formData.image_url_input.trim())) {
       alert('This URL is already added')
       return
@@ -316,12 +310,14 @@ function ProductsTab({ admin }: { admin: Admin | null }) {
 
   return (
     <div>
-      <button
-        onClick={() => setShowForm(!showForm)}
-        className="w-full md:w-auto bg-green-600 hover:bg-green-700 text-white px-4 md:px-6 py-3 rounded-lg font-medium transition text-sm md:text-base"
-      >
-        {showForm ? '✕ Cancel' : '+ Add Product'}
-      </button>
+      <div className="mb-4 md:mb-6">
+        <button
+          onClick={() => setShowForm(!showForm)}
+          className="w-full md:w-auto bg-green-600 hover:bg-green-700 text-white px-4 md:px-6 py-3 rounded-lg font-medium transition"
+        >
+          {showForm ? '✕ Cancel' : '+ Add Product'}
+        </button>
+      </div>
 
       {showForm && (
         <div className="bg-white rounded-lg shadow-md p-4 md:p-6 mb-6">
@@ -336,7 +332,7 @@ function ProductsTab({ admin }: { admin: Admin | null }) {
                   type="text"
                   placeholder="e.g., Fresh Tomatoes"
                   value={formData.title}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, title: e.target.value })}
+                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                   required
                   helper="Use a clear, descriptive name"
                 />
@@ -347,15 +343,14 @@ function ProductsTab({ admin }: { admin: Admin | null }) {
                     type="text"
                     placeholder="Search categories..."
                     value={categorySearch}
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCategorySearch(e.target.value)}
+                    onChange={(e) => setCategorySearch(e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 text-sm"
                   />
                   <select
                     value={formData.category_id}
-                    onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setFormData({ ...formData, category_id: e.target.value })}
+                    onChange={(e) => setFormData({ ...formData, category_id: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 mt-2 text-sm"
                     required
-                    aria-label="Product Category"
                   >
                     <option value="">Select Category</option>
                     {filteredCategories.map((cat) => (
@@ -372,7 +367,7 @@ function ProductsTab({ admin }: { admin: Admin | null }) {
                   type="number"
                   placeholder="0.00"
                   value={formData.price}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, price: e.target.value })}
+                  onChange={(e) => setFormData({ ...formData, price: e.target.value })}
                   required
                   step="0.01"
                 />
@@ -382,7 +377,7 @@ function ProductsTab({ admin }: { admin: Admin | null }) {
                   type="text"
                   placeholder="e.g., Kumasi, Central Region"
                   value={formData.location}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, location: e.target.value })}
+                  onChange={(e) => setFormData({ ...formData, location: e.target.value })}
                   required
                 />
 
@@ -391,7 +386,7 @@ function ProductsTab({ admin }: { admin: Admin | null }) {
                   type="tel"
                   placeholder="+233 xxx xxx xxx"
                   value={formData.contact_phone}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, contact_phone: e.target.value })}
+                  onChange={(e) => setFormData({ ...formData, contact_phone: e.target.value })}
                 />
               </div>
 
@@ -400,24 +395,24 @@ function ProductsTab({ admin }: { admin: Admin | null }) {
                 <SelectField
                   label="Condition"
                   value={formData.condition}
-                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setFormData({ ...formData, condition: e.target.value })}
+                  onChange={(e) => setFormData({ ...formData, condition: e.target.value })}
                   options={['New', 'Like New', 'Good', 'Fair', 'Needs Repair']}
                 />
 
                 <SelectField
                   label="Warranty"
                   value={formData.warranty}
-                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setFormData({ ...formData, warranty: e.target.value })}
-                  options={['No', 'Yes']}
+                  onChange={(e) => setFormData({ ...formData, warranty: e.target.value })}
+                  options={['No Warranty', 'Has Warranty']}
                 />
 
-                {formData.warranty === 'Yes' && (
+                {formData.warranty === 'Has Warranty' && (
                   <InputField
                     label="Warranty Period"
                     type="text"
                     placeholder="e.g., 1 year"
                     value={formData.warranty_period}
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, warranty_period: e.target.value })}
+                    onChange={(e) => setFormData({ ...formData, warranty_period: e.target.value })}
                   />
                 )}
 
@@ -429,8 +424,8 @@ function ProductsTab({ admin }: { admin: Admin | null }) {
                       type="url"
                       placeholder="https://example.com/image.jpg"
                       value={formData.image_url_input}
-                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, image_url_input: e.target.value })}
-                      onKeyPress={(e: React.KeyboardEvent<HTMLInputElement>) => e.key === 'Enter' && handleAddImageUrl()}
+                      onChange={(e) => setFormData({ ...formData, image_url_input: e.target.value })}
+                      onKeyPress={(e) => e.key === 'Enter' && handleAddImageUrl()}
                       className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 text-sm"
                     />
                     <button
@@ -478,7 +473,7 @@ function ProductsTab({ admin }: { admin: Admin | null }) {
               <textarea
                 placeholder="Detailed product description..."
                 value={formData.description}
-                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setFormData({ ...formData, description: e.target.value })}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 rows={4}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 text-sm"
                 required
@@ -490,7 +485,7 @@ function ProductsTab({ admin }: { admin: Admin | null }) {
               <textarea
                 placeholder="e.g. - High quality&#10;- Fresh produce&#10;- Pesticide free"
                 value={formData.features}
-                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setFormData({ ...formData, features: e.target.value })}
+                onChange={(e) => setFormData({ ...formData, features: e.target.value })}
                 rows={3}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 text-sm"
               />
@@ -515,167 +510,6 @@ function ProductsTab({ admin }: { admin: Admin | null }) {
           {products.map((product) => (
             <ProductCard key={product.id} product={product} onDelete={() => fetchProducts()} />
           ))}
-        </div>
-      )}
-    </div>
-  )
-}
-
-function CategoriesTab() {
-  const [categories, setCategories] = useState<any[]>([])
-  const [filteredCategories, setFilteredCategories] = useState<any[]>([])
-  const [categorySearch, setCategorySearch] = useState('')
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    fetchCategories()
-  }, [])
-
-  useEffect(() => {
-    // Filter categories based on search
-    if (categorySearch.trim() === '') {
-      setFilteredCategories(categories)
-    } else {
-      setFilteredCategories(
-        categories.filter(cat =>
-          cat.name.toLowerCase().includes(categorySearch.toLowerCase()) ||
-          cat.description.toLowerCase().includes(categorySearch.toLowerCase())
-        )
-      )
-    }
-  }, [categorySearch, categories])
-
-  const fetchCategories = async () => {
-    const { data } = await supabase.from('categories').select('*').order('name', { ascending: true })
-    setCategories(data || [])
-    setLoading(false)
-  }
-
-  return (
-    <div>
-      <div className="mb-6">
-        <input
-          type="text"
-          placeholder="🔍 Search categories..."
-          value={categorySearch}
-          onChange={(e) => setCategorySearch(e.target.value)}
-          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 text-sm md:text-base"
-        />
-        <p className="text-sm text-gray-600 mt-2">
-          Showing <strong>{filteredCategories.length}</strong> of <strong>{categories.length}</strong> categories
-        </p>
-      </div>
-
-      {loading ? (
-        <p className="text-center py-12">Loading categories...</p>
-      ) : filteredCategories.length === 0 ? (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-          <p className="text-yellow-800">No categories found</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-          {filteredCategories.map((cat) => (
-            <div key={cat.id} className="bg-white rounded-lg shadow-md p-4 hover:shadow-lg transition">
-              <div className="text-3xl mb-2">{cat.icon}</div>
-              <h3 className="font-semibold text-lg text-gray-800">{cat.name}</h3>
-              <p className="text-gray-600 text-sm mt-2">{cat.description}</p>
-              {cat.helper_text && <p className="text-gray-500 text-xs mt-2 italic">💡 {cat.helper_text}</p>}
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
-
-function VendorsTab() {
-  const [vendors, setVendors] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
-  const [inviteEmail, setInviteEmail] = useState('')
-
-  useEffect(() => {
-    fetchVendors()
-  }, [])
-
-  const fetchVendors = async () => {
-    const { data } = await supabase.from('vendors').select('*')
-    setVendors(data || [])
-    setLoading(false)
-  }
-
-  const handleInvite = async (e: React.FormEvent) => {
-    e.preventDefault()
-    const token = Math.random().toString(36).substring(7)
-    
-    await supabase.from('vendor_invites').insert([
-      {
-        email: inviteEmail,
-        token,
-        expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-      },
-    ])
-
-    setInviteEmail('')
-    alert(`Invite sent to ${inviteEmail}`)
-  }
-
-  return (
-    <div>
-      <form onSubmit={handleInvite} className="bg-white rounded-lg shadow-md p-4 md:p-6 mb-6">
-        <h2 className="text-xl font-bold text-gray-800 mb-4">Invite Vendor</h2>
-        <div className="flex flex-col md:flex-row gap-3">
-          <input
-            type="email"
-            placeholder="Vendor email"
-            value={inviteEmail}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setInviteEmail(e.target.value)}
-            className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 text-sm md:text-base"
-            required
-          />
-          <button type="submit" className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-medium transition whitespace-nowrap text-sm md:text-base">
-            Send Invite
-          </button>
-        </div>
-      </form>
-
-      {loading ? (
-        <p className="text-center py-12">Loading vendors...</p>
-      ) : (
-        <div className="bg-white rounded-lg shadow-md overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-100">
-                <tr>
-                  <th className="px-4 py-3 text-left font-semibold text-gray-700">Email</th>
-                  <th className="px-4 py-3 text-left font-semibold text-gray-700">Business</th>
-                  <th className="px-4 py-3 text-left font-semibold text-gray-700">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {vendors.map((vendor) => (
-                  <tr key={vendor.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 text-gray-800">{vendor.email}</td>
-                    <td className="px-4 py-3 text-gray-600">{vendor.business_name || '-'}</td>
-                    <td className="px-4 py-3">
-                      <span
-                        className={`px-3 py-1 rounded-full text-xs font-medium ${
-                          vendor.is_verified ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
-                        }`}
-                      >
-                        {vendor.is_verified ? 'Verified' : 'Pending'}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {vendors.length === 0 && (
-            <div className="text-center py-12 text-gray-600">
-              <p>No vendors yet</p>
-            </div>
-          )}
         </div>
       )}
     </div>
@@ -723,13 +557,174 @@ function SelectField({ label, value, onChange, options }: any) {
   return (
     <div>
       <label className="block text-sm font-medium text-gray-700 mb-2">{label}</label>
-      <select value={value} onChange={onChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 text-sm" aria-label={label}>
+      <select value={value} onChange={onChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 text-sm">
         {options.map((opt: string) => (
           <option key={opt} value={opt}>
             {opt}
           </option>
         ))}
       </select>
+    </div>
+  )
+}
+
+function CategoriesTab() {
+  const [categories, setCategories] = useState<any[]>([])
+  const [filteredCategories, setFilteredCategories] = useState<any[]>([])
+  const [categorySearch, setCategorySearch] = useState('')
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetchCategories()
+  }, [])
+
+  useEffect(() => {
+    if (categorySearch.trim() === '') {
+      setFilteredCategories(categories)
+    } else {
+      setFilteredCategories(
+        categories.filter(
+          (cat) =>
+            cat.name.toLowerCase().includes(categorySearch.toLowerCase()) ||
+            cat.description.toLowerCase().includes(categorySearch.toLowerCase())
+        )
+      )
+    }
+  }, [categorySearch, categories])
+
+  const fetchCategories = async () => {
+    const { data } = await supabase.from('categories').select('*').order('name', { ascending: true })
+    setCategories(data || [])
+    setLoading(false)
+  }
+
+  return (
+    <div>
+      <div className="mb-6">
+        <input
+          type="text"
+          placeholder="🔍 Search categories..."
+          value={categorySearch}
+          onChange={(e) => setCategorySearch(e.target.value)}
+          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+        />
+        <p className="text-sm text-gray-600 mt-2">
+          Showing <strong>{filteredCategories.length}</strong> of <strong>{categories.length}</strong> categories
+        </p>
+      </div>
+
+      {loading ? (
+        <p className="text-center py-12">Loading categories...</p>
+      ) : filteredCategories.length === 0 ? (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+          <p className="text-yellow-800">No categories found</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+          {filteredCategories.map((cat) => (
+            <div key={cat.id} className="bg-white rounded-lg shadow-md p-4 hover:shadow-lg transition">
+              <div className="text-3xl mb-2">{cat.icon}</div>
+              <h3 className="font-semibold text-lg text-gray-800">{cat.name}</h3>
+              <p className="text-gray-600 text-sm mt-2">{cat.description}</p>
+              {cat.helper_text && <p className="text-gray-500 text-xs mt-2 italic">💡 {cat.helper_text}</p>}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function VendorsTab() {
+  const [vendors, setVendors] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [inviteEmail, setInviteEmail] = useState('')
+
+  useEffect(() => {
+    fetchVendors()
+  }, [])
+
+  const fetchVendors = async () => {
+    const { data } = await supabase.from('vendors').select('*')
+    setVendors(data || [])
+    setLoading(false)
+  }
+
+  const handleInvite = async (e: React.FormEvent) => {
+    e.preventDefault()
+    const token = Math.random().toString(36).substring(7)
+
+    await supabase.from('vendor_invites').insert([
+      {
+        email: inviteEmail,
+        token,
+        expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+      },
+    ])
+
+    setInviteEmail('')
+    alert(`Invite sent to ${inviteEmail}`)
+  }
+
+  return (
+    <div>
+      <form onSubmit={handleInvite} className="bg-white rounded-lg shadow-md p-4 md:p-6 mb-6">
+        <h2 className="text-xl font-bold text-gray-800 mb-4">Invite Vendor</h2>
+        <div className="flex flex-col md:flex-row gap-3">
+          <input
+            type="email"
+            placeholder="Vendor email"
+            value={inviteEmail}
+            onChange={(e) => setInviteEmail(e.target.value)}
+            className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 text-sm md:text-base"
+            required
+          />
+          <button type="submit" className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-medium transition whitespace-nowrap">
+            Send Invite
+          </button>
+        </div>
+      </form>
+
+      {loading ? (
+        <p className="text-center py-12">Loading vendors...</p>
+      ) : (
+        <div className="bg-white rounded-lg shadow-md overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-100">
+                <tr>
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Email</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Business</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {vendors.map((vendor) => (
+                  <tr key={vendor.id} className="hover:bg-gray-50">
+                    <td className="px-4 py-3 text-sm text-gray-800">{vendor.email}</td>
+                    <td className="px-4 py-3 text-sm text-gray-600">{vendor.business_name || '-'}</td>
+                    <td className="px-4 py-3 text-sm">
+                      <span
+                        className={`px-3 py-1 rounded-full text-xs font-medium ${
+                          vendor.is_verified ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                        }`}
+                      >
+                        {vendor.is_verified ? 'Verified' : 'Pending'}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {vendors.length === 0 && (
+            <div className="text-center py-12 text-gray-600">
+              <p>No vendors yet</p>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }

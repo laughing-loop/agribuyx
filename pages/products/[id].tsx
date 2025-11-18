@@ -12,6 +12,11 @@ interface Product {
   image_url: string
   category_id: string
   created_at: string
+  condition?: string
+  warranty?: string
+  warranty_period?: string
+  features?: string
+  contact_phone?: string
 }
 
 interface Category {
@@ -164,9 +169,42 @@ export default function ProductDetail() {
               </div>
             </div>
 
-            {/* Product Meta */}
-            <div className="mt-8 pt-6 border-t text-sm text-gray-500">
-              <p>Posted on {new Date(product.created_at).toLocaleDateString()}</p>
+            <div className="border-t pt-6">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                <div>
+                  <p className="text-xs text-gray-500 uppercase">Condition</p>
+                  <p className="font-semibold text-gray-800">{product.condition || 'New'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 uppercase">Warranty</p>
+                  <p className="font-semibold text-gray-800">{product.warranty === 'Yes' ? `✓ ${product.warranty_period}` : 'No'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 uppercase">Location</p>
+                  <p className="font-semibold text-gray-800">📍 {product.location}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 uppercase">Posted</p>
+                  <p className="font-semibold text-gray-800">{new Date(product.created_at).toLocaleDateString()}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="border-t pt-6">
+              {product.features && (
+                <div className="mb-6">
+                  <h3 className="text-lg font-semibold text-gray-800 mb-3">Features & Specifications</h3>
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    {product.features.split('\n').map((feature: string, idx: number) => (
+                      feature.trim() && (
+                        <p key={idx} className="text-gray-700 py-1">
+                          {feature.trim().startsWith('-') ? feature.trim() : `• ${feature.trim()}`}
+                        </p>
+                      )
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
