@@ -1,5 +1,5 @@
-// Lightweight re-export to switch to dashboard-v2 implementation.
-// This keeps the route `pages/admin/dashboard` intact while using the newer V2 component.
+// Route /admin/dashboard now uses the v2 implementation.
+// We keep the legacy implementation below for reference only.
 import AdminDashboardV2 from './dashboard-v2'
 
 export default AdminDashboardV2
@@ -13,7 +13,7 @@ interface Admin {
   name: string
 }
 
-export default function AdminDashboard() {
+function AdminDashboardLegacy() {
   const router = useRouter()
   const [admin, setAdmin] = useState<Admin | null>(null)
   const [loading, setLoading] = useState(true)
