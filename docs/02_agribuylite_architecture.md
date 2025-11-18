@@ -1,8 +1,8 @@
-# AgriBuy Lite – System Architecture
+# AgriBuyX – System Architecture
 
-This document outlines the technical architecture of AgriBuy Lite.  
-The system is designed to be lightweight, fast to deploy, low-cost,  
-and fully scalable into the future AgriBuy Core platform.
+This document outlines the technical architecture of AgriBuyX.  
+The system is designed to be modern, fast to deploy, and fully scalable.  
+Built with **Next.js** on **Vercel** for optimal performance and SEO.
 
 ---
 
@@ -38,52 +38,67 @@ and fully scalable into the future AgriBuy Core platform.
 
 ---
 
-# 2.2 Frontend – Next.js on Vercel
-AgriBuy Lite uses **Next.js** hosted on **Vercel** for:
+## 2.2 Frontend – Next.js on Vercel
+AgriBuyX uses **Next.js 15** hosted on **Vercel** for:
 
-- Product listing pages  
-- Product detail pages  
-- Admin panel UI  
-- Image uploads through client UI  
-- Static rendering & server-side rendering  
-- Fast CDN delivery worldwide  
+- Product listing pages (fully responsive)
+- Product detail pages with image galleries
+- Admin dashboard
+- Image uploads and watermarking
+- Mobile-first design (excellent for iOS & Android)
+- Static rendering & server-side rendering
+- SEO optimization with meta tags
+- Fast CDN delivery worldwide
+- Automatic deployments on git push
 
 ### Why Next.js?
-- Free hosting on Vercel  
-- Built-in API routes  
-- Blazing fast  
-- Great future integration with mobile apps via shared API  
+- **SEO Ready**: Built-in Next/Head for meta tags, Open Graph, structured data
+- **Mobile Optimized**: Responsive design, fast loading on 3G/4G
+- **Vercel Hosting**: Free tier, auto-scaling, custom domains
+- **Developer Experience**: TypeScript, API routes, hot reload
+- **Future Proof**: Easy transition to mobile apps via shared API
 
 ---
 
 # 2.3 Backend – Vercel Serverless API Routes
 
-Next.js API routes serve as the backend:
+Next.js API routes serve as the scalable backend:
+
+### Tech Stack
+- **Node.js Runtime** on Vercel
+- **TypeScript** for type safety
+- **Middleware** for authentication & validation
+- **Next.js 15** built-in routing
 
 ### API Responsibilities
-- Admin authentication  
-- Vendor invite system  
-- Upload products  
-- Watermark images before storing  
-- Fetch product lists  
-- Fetch product detail  
-- Category filters  
-- Location filters  
+- Admin authentication & session management
+- Vendor invite system
+- Product CRUD operations (Create, Read, Update, Delete)
+- Image watermarking before storage
+- Product search & filters (category, location, price)
+- Category management
+- Location-based queries
+- Rate limiting & abuse prevention
 
-### Serverless Functions Used For:
-- `/api/products/create`  
-- `/api/products/update`  
-- `/api/products/delete`  
-- `/api/vendors/invite`  
-- `/api/vendors/register`  
-- `/api/auth/login`  
-- `/api/auth/check`  
+### Main API Endpoints
+```
+POST   /api/auth/login           → Admin login
+GET    /api/auth/check           → Verify session
+POST   /api/products/create      → Create product listing
+PUT    /api/products/[id]        → Update product
+DELETE /api/products/[id]        → Delete product
+GET    /api/products             → List all products (with filters)
+GET    /api/products/[id]        → Get product details
+POST   /api/vendors/invite       → Send vendor invitation
+POST   /api/vendors/register     → Register invited vendor
+GET    /api/categories           → Get all categories
+```
 
-### Benefits:
-- No server maintenance  
-- Auto-scaling  
-- Zero cost for low traffic  
-- Integrates seamlessly with the frontend  
+### Benefits
+- **No server maintenance**: Vercel handles scaling
+- **Pay-as-you-go**: Free tier covers MVP usage
+- **Instant deployment**: Push to git = live immediately
+- **Built-in database**: Integrates with Supabase
 
 ---
 

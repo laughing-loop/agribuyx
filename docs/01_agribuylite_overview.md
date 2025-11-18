@@ -1,22 +1,21 @@
-# AgriBuy Lite – Project Overview
+# AgriBuyX – Project Overview
 
-AgriBuy Lite is the lightweight, early-stage version of the AgriBuy ecosystem.  
-It is designed to operate as a simple agricultural classifieds platform while the 
-main AgriBuy marketplace is being developed.
+**AgriBuyX** is a modern agricultural marketplace platform built with Next.js and deployed on Vercel.  
+It is designed to operate as a comprehensive platform connecting farmers, vendors, and buyers.
 
-In this Lite version, only internal admins/developers can upload products. 
+Currently in **Phase 1 (Lite)**: Only internal admins/developers can upload products.  
 Public browsing is allowed, but external vendors cannot sign up unless invited.
 
-AgriBuy Lite sets the foundation for the full AgriBuy platform.
+AgriBuyX sets the foundation for the full agricultural commerce ecosystem.
 
 ---
 
-## 1.1 Purpose of AgriBuy Lite
-- Launch quickly with a small but functional marketplace
-- Develop infrastructure, UI/UX, and backend logic
-- Gather early data, traffic, and engagement
-- Prepare for vendor onboarding and future features
-- Build trust and awareness before the full AgriBuy rollout
+## 1.1 Purpose of AgriBuyX
+- Launch quickly with a functional agricultural marketplace
+- Develop modern infrastructure with Next.js + Vercel
+- Gather early traffic, data, and user engagement
+- Prepare for vendor onboarding and advanced features
+- Build brand awareness with SEO-optimized platform
 
 ---
 
