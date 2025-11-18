@@ -186,6 +186,7 @@ function ProductsTab({ admin }: { admin: Admin | null }) {
               value={formData.category_id}
               onChange={(e) => setFormData({ ...formData, category_id: e.target.value })}
               className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+              aria-label="Product Category"
               required
             >
               <option value="">Select Category</option>
