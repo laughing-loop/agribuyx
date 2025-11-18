@@ -25,12 +25,24 @@ interface Category {
   icon: string
 }
 
+interface ProductImage {
+  id: string
+  product_id: string
+  image_url: string
+}
+
+function getWatermarkedImageUrl(url: string) {
+  if (!url) return url
+  return url
+}
+
 export default function ProductDetail() {
   const router = useRouter()
   const { id } = router.query
   const [product, setProduct] = useState<Product | null>(null)
   const [category, setCategory] = useState<Category | null>(null)
   const [loading, setLoading] = useState(true)
+  const [images, setImages] = useState<ProductImage[]>([])
 
   useEffect(() => {
     if (!id) return
@@ -47,7 +59,6 @@ export default function ProductDetail() {
     if (!error && productData) {
       setProduct(productData)
 
-      // Fetch category info
       if (productData.category_id) {
         const { data: categoryData } = await supabase
           .from('categories')
@@ -57,6 +68,13 @@ export default function ProductDetail() {
 
         setCategory(categoryData)
       }
+
+      const { data: imageData } = await supabase
+        .from('product_images')
+        .select('*')
+        .eq('product_id', productData.id)
+
+      setImages(imageData || [])
     }
     setLoading(false)
   }
@@ -111,9 +129,29 @@ export default function ProductDetail() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 bg-white rounded-lg shadow p-8">
           {/* Product Image */}
           <div>
-            {product.image_url ? (
+            {images.length > 0 ? (
+              <>
+                <img
+                  src={getWatermarkedImageUrl(images[0].image_url)}
+                  alt={product.title}
+                  className="w-full h-96 object-cover rounded-lg"
+                />
+                {images.length > 1 && (
+                  <div className="mt-4 grid grid-cols-4 gap-2">
+                    {images.map((img) => (
+                      <img
+                        key={img.id}
+                        src={getWatermarkedImageUrl(img.image_url)}
+                        alt={product.title}
+                        className="h-20 w-full cursor-pointer rounded object-cover"
+                      />
+                    ))}
+                  </div>
+                )}
+              </>
+            ) : product.image_url ? (
               <img
-                src={product.image_url}
+                src={getWatermarkedImageUrl(product.image_url)}
                 alt={product.title}
                 className="w-full h-96 object-cover rounded-lg"
               />
@@ -135,7 +173,7 @@ export default function ProductDetail() {
             <h1 className="text-4xl font-bold text-gray-900 mb-4">{product.title}</h1>
 
             <p className="text-3xl font-bold text-green-600 mb-4">
-              ₦{product.price.toLocaleString()}
+              GHS ₵{product.price.toLocaleString()}
             </p>
 
             <div className="flex items-center gap-2 text-gray-600 mb-6">
@@ -151,14 +189,33 @@ export default function ProductDetail() {
             {/* Contact Section */}
             <div className="border-t pt-6">
               <h3 className="text-lg font-semibold text-gray-800 mb-4">Contact Seller</h3>
-              <div className="flex gap-4">
+              <div className="flex flex-col gap-3 sm:flex-row">
                 <a
-                  href={`https://wa.me/?text=I'm interested in ${product.title}`}
+                  href={(() => {
+                    const raw = product.contact_phone || ''
+                    const digits = raw.replace(/[^0-9]/g, '')
+                    const message = encodeURIComponent(`I'm interested in ${product.title}`)
+                    return digits
+                      ? `https://wa.me/${digits}?text=${message}`
+                      : `https://wa.me/?text=${message}`
+                  })()}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex-1 bg-green-600 hover:bg-green-700 text-white font-semibold py-3 rounded-lg text-center transition"
                 >
                   💬 WhatsApp
+                </a>
+                <a
+                  href={(() => {
+                    const url = `https://agribuyx.com/products/${product.id}`
+                    const text = encodeURIComponent(`I'm interested in ${product.title}`)
+                    return `https://t.me/share/url?url=${encodeURIComponent(url)}&text=${text}`
+                  })()}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-1 bg-blue-500 hover:bg-blue-600 text-white font-semibold py-3 rounded-lg text-center transition"
+                >
+                  📢 Telegram
                 </a>
                 <a
                   href={`mailto:support@agribuyx.com?subject=Interested in ${product.title}`}

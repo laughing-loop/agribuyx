@@ -332,7 +332,7 @@ function ProductsTab({ admin }: { admin: Admin | null }) {
                   type="text"
                   placeholder="e.g., Fresh Tomatoes"
                   value={formData.title}
-                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                  onChange={(e: any) => setFormData({ ...formData, title: e.target.value })}
                   required
                   helper="Use a clear, descriptive name"
                 />
@@ -367,7 +367,7 @@ function ProductsTab({ admin }: { admin: Admin | null }) {
                   type="number"
                   placeholder="0.00"
                   value={formData.price}
-                  onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                  onChange={(e: any) => setFormData({ ...formData, price: e.target.value })}
                   required
                   step="0.01"
                 />
@@ -377,7 +377,7 @@ function ProductsTab({ admin }: { admin: Admin | null }) {
                   type="text"
                   placeholder="e.g., Kumasi, Central Region"
                   value={formData.location}
-                  onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                  onChange={(e: any) => setFormData({ ...formData, location: e.target.value })}
                   required
                 />
 
@@ -386,7 +386,7 @@ function ProductsTab({ admin }: { admin: Admin | null }) {
                   type="tel"
                   placeholder="+233 xxx xxx xxx"
                   value={formData.contact_phone}
-                  onChange={(e) => setFormData({ ...formData, contact_phone: e.target.value })}
+                  onChange={(e: any) => setFormData({ ...formData, contact_phone: e.target.value })}
                 />
               </div>
 
@@ -395,14 +395,14 @@ function ProductsTab({ admin }: { admin: Admin | null }) {
                 <SelectField
                   label="Condition"
                   value={formData.condition}
-                  onChange={(e) => setFormData({ ...formData, condition: e.target.value })}
+                  onChange={(e: any) => setFormData({ ...formData, condition: e.target.value })}
                   options={['New', 'Like New', 'Good', 'Fair', 'Needs Repair']}
                 />
 
                 <SelectField
                   label="Warranty"
                   value={formData.warranty}
-                  onChange={(e) => setFormData({ ...formData, warranty: e.target.value })}
+                  onChange={(e: any) => setFormData({ ...formData, warranty: e.target.value })}
                   options={['No Warranty', 'Has Warranty']}
                 />
 
@@ -412,7 +412,7 @@ function ProductsTab({ admin }: { admin: Admin | null }) {
                     type="text"
                     placeholder="e.g., 1 year"
                     value={formData.warranty_period}
-                    onChange={(e) => setFormData({ ...formData, warranty_period: e.target.value })}
+                    onChange={(e: any) => setFormData({ ...formData, warranty_period: e.target.value })}
                   />
                 )}
 

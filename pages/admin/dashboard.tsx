@@ -1,3 +1,8 @@
+// Lightweight re-export to switch to dashboard-v2 implementation.
+// This keeps the route `pages/admin/dashboard` intact while using the newer V2 component.
+import AdminDashboardV2 from './dashboard-v2'
+
+export default AdminDashboardV2
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/router'
 import { supabase } from '@/lib/supabase'

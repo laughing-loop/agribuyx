@@ -19,11 +19,18 @@ interface Category {
   icon: string
 }
 
+function getWatermarkedImageUrl(url: string) {
+  if (!url) return url
+  return url
+}
+
 export default function Products() {
   const [products, setProducts] = useState<Product[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [selectedCategory, setSelectedCategory] = useState<string>('')
   const [searchQuery, setSearchQuery] = useState<string>('')
+  const [locations, setLocations] = useState<string[]>([])
+  const [selectedLocation, setSelectedLocation] = useState<string>('')
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -42,7 +49,15 @@ export default function Products() {
     }
 
     const { data, error } = await query
-    if (!error) setProducts(data || [])
+    if (!error) {
+      const items = (data || []) as Product[]
+      setProducts(items)
+
+      const uniqueLocations = Array.from(
+        new Set(items.map((product) => product.location).filter(Boolean))
+      )
+      setLocations(uniqueLocations)
+    }
     setLoading(false)
   }
 
@@ -51,10 +66,17 @@ export default function Products() {
     setCategories(data || [])
   }
 
-  const filteredProducts = products.filter((product) =>
-    product.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    product.description?.toLowerCase().includes(searchQuery.toLowerCase())
-  )
+  const filteredProducts = products.filter((product) => {
+    const matchesSearch =
+      product.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      product.description?.toLowerCase().includes(searchQuery.toLowerCase())
+
+    const matchesLocation = selectedLocation
+      ? product.location === selectedLocation
+      : true
+
+    return matchesSearch && matchesLocation
+  })
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -132,6 +154,31 @@ export default function Products() {
 
           {/* Products Grid */}
           <div className="lg:col-span-3">
+            <div className="mb-4 flex flex-wrap items-center gap-3">
+              <span className="text-sm text-gray-600">Filter by location:</span>
+              <select
+                value={selectedLocation}
+                onChange={(e) => setSelectedLocation(e.target.value)}
+                className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+              >
+                <option value="">All locations</option>
+                {locations.map((loc) => (
+                  <option key={loc} value={loc}>
+                    {loc}
+                  </option>
+                ))}
+              </select>
+              {selectedLocation && (
+                <button
+                  type="button"
+                  onClick={() => setSelectedLocation('')}
+                  className="text-xs text-gray-500 underline"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+
             {loading ? (
               <div className="text-center py-12">
                 <p className="text-gray-600">Loading products...</p>
@@ -147,7 +194,7 @@ export default function Products() {
                     <div className="bg-white rounded-lg shadow hover:shadow-lg transition transform hover:scale-105 overflow-hidden cursor-pointer">
                       {product.image_url ? (
                         <img
-                          src={product.image_url}
+                          src={getWatermarkedImageUrl(product.image_url)}
                           alt={product.title}
                           className="w-full h-48 object-cover"
                         />
@@ -160,7 +207,9 @@ export default function Products() {
                         <h3 className="font-semibold text-lg text-gray-800 mb-2 line-clamp-2">
                           {product.title}
                         </h3>
-                        <p className="text-green-600 font-bold text-xl mb-2">₦{product.price.toLocaleString()}</p>
+                        <p className="text-green-600 font-bold text-xl mb-2">
+                          GHS ₵{product.price.toLocaleString()}
+                        </p>
                         <p className="text-gray-600 text-sm mb-3 line-clamp-2">
                           {product.description}
                         </p>
