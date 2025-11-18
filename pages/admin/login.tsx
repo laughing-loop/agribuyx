@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useRouter } from 'next/router'
+import Image from 'next/image'
 import { supabase } from '@/lib/supabase'
 
 export default function AdminLogin() {
@@ -53,7 +54,15 @@ export default function AdminLogin() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-lg shadow-lg p-8 max-w-md w-full">
-        <h1 className="text-3xl font-bold text-green-700 mb-2 text-center">AgriBuyX</h1>
+        <div className="mb-3 flex justify-center">
+          <Image
+            src="/agribuyx_logo-02.svg"
+            alt="AgriBuyX"
+            width={160}
+            height={40}
+            className="h-10 w-auto"
+          />
+        </div>
         <h2 className="text-xl font-semibold text-gray-800 mb-6 text-center">Admin Login</h2>
 
         <form onSubmit={handleLogin} className="space-y-4">

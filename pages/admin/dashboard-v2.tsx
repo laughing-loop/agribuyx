@@ -12,7 +12,9 @@ export default function AdminDashboardV2() {
   const router = useRouter()
   const [admin, setAdmin] = useState<Admin | null>(null)
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState<'products' | 'categories' | 'vendors'>('products')
+  const [activeTab, setActiveTab] = useState<'products' | 'categories' | 'vendors' | 'updates' | 'support'>(
+    'products'
+  )
 
   useEffect(() => {
     const token = localStorage.getItem('adminToken')
@@ -91,6 +93,18 @@ export default function AdminDashboardV2() {
                 active={activeTab === 'vendors'}
                 onClick={() => setActiveTab('vendors')}
               />
+              <TabPill
+                label="Updates & Social"
+                value="updates"
+                active={activeTab === 'updates'}
+                onClick={() => setActiveTab('updates')}
+              />
+              <TabPill
+                label="Support / Complaints"
+                value="support"
+                active={activeTab === 'support'}
+                onClick={() => setActiveTab('support')}
+              />
             </div>
           </div>
         </nav>
@@ -100,12 +114,14 @@ export default function AdminDashboardV2() {
         {activeTab === 'products' && <ProductsTab admin={admin} />}
         {activeTab === 'categories' && <CategoriesTab />}
         {activeTab === 'vendors' && <VendorsTab />}
+        {activeTab === 'updates' && <UpdatesTab />}
+        {activeTab === 'support' && <SupportTab />}
       </main>
     </div>
   )
 }
 
-type TabKey = 'products' | 'categories' | 'vendors'
+type TabKey = 'products' | 'categories' | 'vendors' | 'updates' | 'support'
 
 function TabPill({
   label,
@@ -575,6 +591,450 @@ function ProductsTab({ admin }: { admin: Admin | null }) {
           ))}
         </div>
       )}
+    </section>
+  )
+}
+
+function UpdatesTab() {
+  const [whatsappUrl, setWhatsappUrl] = useState('')
+  const [tiktokUrl, setTiktokUrl] = useState('')
+  const [facebookUrl, setFacebookUrl] = useState('')
+  const [settingsLoading, setSettingsLoading] = useState(true)
+  const [settingsSaving, setSettingsSaving] = useState(false)
+
+  const [posts, setPosts] = useState<any[]>([])
+  const [postsLoading, setPostsLoading] = useState(true)
+  const [postSaving, setPostSaving] = useState(false)
+  const [postForm, setPostForm] = useState({
+    title: '',
+    slug: '',
+    summary: '',
+    content: '',
+    image_url: '',
+    video_url: '',
+  })
+
+  useEffect(() => {
+    fetchSettings()
+    fetchPosts()
+  }, [])
+
+  const fetchSettings = async () => {
+    const { data, error } = await supabase.from('site_settings').select('*')
+
+    if (!error && data) {
+      data.forEach((row: any) => {
+        if (row.key === 'whatsapp_channel_url') {
+          setWhatsappUrl(row.value || '')
+        }
+        if (row.key === 'tiktok_url') {
+          setTiktokUrl(row.value || '')
+        }
+        if (row.key === 'facebook_url') {
+          setFacebookUrl(row.value || '')
+        }
+      })
+    }
+    setSettingsLoading(false)
+  }
+
+  const fetchPosts = async () => {
+    const { data, error } = await supabase
+      .from('blog_posts')
+      .select('*')
+      .order('created_at', { ascending: false })
+
+    if (!error && data) {
+      setPosts(data)
+    }
+    setPostsLoading(false)
+  }
+
+  const handleSaveSettings = async (e: any) => {
+    e.preventDefault()
+    setSettingsSaving(true)
+
+    const rows: any[] = []
+    rows.push({ key: 'whatsapp_channel_url', value: whatsappUrl })
+    rows.push({ key: 'tiktok_url', value: tiktokUrl })
+    rows.push({ key: 'facebook_url', value: facebookUrl })
+
+    const { error } = await supabase
+      .from('site_settings')
+      .upsert(rows, { onConflict: 'key' })
+
+    if (error) {
+      alert('Error saving social links: ' + error.message)
+    }
+
+    setSettingsSaving(false)
+  }
+
+  const handleCreatePost = async (e: any) => {
+    e.preventDefault()
+    if (!postForm.title.trim()) {
+      alert('Title is required')
+      return
+    }
+
+    let slug = postForm.slug.trim()
+    if (!slug) {
+      slug = postForm.title
+        .toLowerCase()
+        .replace(/[^a-z0-9\s-]/g, '')
+        .trim()
+        .replace(/\s+/g, '-')
+    }
+
+    if (!slug) {
+      alert('Slug could not be generated')
+      return
+    }
+
+    setPostSaving(true)
+
+    const { error } = await supabase.from('blog_posts').insert([
+      {
+        title: postForm.title,
+        slug,
+        summary: postForm.summary,
+        content: postForm.content,
+        image_url: postForm.image_url,
+        video_url: postForm.video_url,
+      },
+    ])
+
+    if (error) {
+      alert('Error creating post: ' + error.message)
+    } else {
+      setPostForm({ title: '', slug: '', summary: '', content: '', image_url: '', video_url: '' })
+      fetchPosts()
+    }
+
+    setPostSaving(false)
+  }
+
+  const handleDeletePost = async (id: string) => {
+    if (!confirm('Delete this post?')) return
+
+    const { error } = await supabase.from('blog_posts').delete().eq('id', id)
+    if (error) {
+      alert('Error deleting post: ' + error.message)
+    } else {
+      setPosts((prev) => prev.filter((p: any) => p.id !== id))
+    }
+  }
+
+  return (
+    <section className="space-y-4 md:space-y-6">
+      <div className="flex flex-col justify-between gap-3 md:flex-row md:items-center">
+        <div>
+          <h2 className="text-lg font-semibold text-gray-900">Updates & Social</h2>
+          <p className="text-sm text-gray-600">
+            Manage WhatsApp, TikTok, Facebook links and publish simple updates for farmers.
+          </p>
+        </div>
+      </div>
+
+      <div className="space-y-4 lg:grid lg:grid-cols-12 lg:gap-6 lg:space-y-0">
+        {/* Left column: Social links */}
+        <div className="lg:col-span-4 xl:col-span-3">
+          <div className="rounded-lg bg-white p-4 shadow-sm md:p-6 lg:sticky lg:top-24">
+            <h3 className="mb-3 text-sm font-semibold text-gray-900">Social channels</h3>
+            <p className="mb-4 text-xs text-gray-600">
+              These links appear on the public shop page so farmers can join your update channels.
+            </p>
+            <form onSubmit={handleSaveSettings} className="space-y-3">
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-700">WhatsApp channel link</label>
+                <input
+                  type="url"
+                  value={whatsappUrl}
+                  onChange={(e) => setWhatsappUrl(e.target.value)}
+                  placeholder="https://chat.whatsapp.com/... or https://whatsapp.com/channel/..."
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-green-500"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-700">TikTok link</label>
+                <input
+                  type="url"
+                  value={tiktokUrl}
+                  onChange={(e) => setTiktokUrl(e.target.value)}
+                  placeholder="https://www.tiktok.com/@your-handle"
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-green-500"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-700">Facebook page link</label>
+                <input
+                  type="url"
+                  value={facebookUrl}
+                  onChange={(e) => setFacebookUrl(e.target.value)}
+                  placeholder="https://facebook.com/your-page"
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-green-500"
+                />
+              </div>
+              <div className="pt-1">
+                <button
+                  type="submit"
+                  disabled={settingsSaving || settingsLoading}
+                  className="w-full rounded-lg bg-green-600 px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-green-700 disabled:cursor-not-allowed disabled:bg-green-400"
+                >
+                  {settingsSaving ? 'Saving...' : 'Save links'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        {/* Right column: Blog creation + list */}
+        <div className="space-y-4 lg:col-span-8 xl:col-span-9">
+          <div className="rounded-lg bg-white p-4 shadow-sm md:p-6">
+            <h3 className="mb-3 text-sm font-semibold text-gray-900">New update</h3>
+            <p className="mb-4 text-xs text-gray-600">
+              Use this for short market updates, platform news, or tips. You can use simple Markdown for
+              bullets, links, and extra images.
+            </p>
+            <form onSubmit={handleCreatePost} className="space-y-3">
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-700">Title *</label>
+                <input
+                  type="text"
+                  value={postForm.title}
+                  onChange={(e) => setPostForm({ ...postForm, title: e.target.value })}
+                  placeholder="e.g. Maize prices this week"
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-green-500"
+                  required
+                />
+              </div>
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-gray-700">Slug</label>
+                  <input
+                    type="text"
+                    value={postForm.slug}
+                    onChange={(e) => setPostForm({ ...postForm, slug: e.target.value })}
+                    placeholder="auto-generated if left blank"
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-green-500"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-gray-700">Image URL</label>
+                  <input
+                    type="url"
+                    value={postForm.image_url}
+                    onChange={(e) => setPostForm({ ...postForm, image_url: e.target.value })}
+                    placeholder="https://example.com/hero-image.jpg"
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-green-500"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-700">Video URL</label>
+                <input
+                  type="url"
+                  value={postForm.video_url}
+                  onChange={(e) => setPostForm({ ...postForm, video_url: e.target.value })}
+                  placeholder="YouTube link or .mp4/.webm video URL (optional)"
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-green-500"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-700">Short summary</label>
+                <textarea
+                  value={postForm.summary}
+                  onChange={(e) => setPostForm({ ...postForm, summary: e.target.value })}
+                  rows={2}
+                  placeholder="One or two lines explaining the update."
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-green-500"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-700">Full content</label>
+                <textarea
+                  value={postForm.content}
+                  onChange={(e) => setPostForm({ ...postForm, content: e.target.value })}
+                  rows={4}
+                  placeholder={
+                    'Use paragraphs, lists (- bullet), and Markdown links like [View product](https://agribuyx.com/products/123).'
+                  }
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-green-500"
+                />
+              </div>
+              <div className="pt-1">
+                <button
+                  type="submit"
+                  disabled={postSaving}
+                  className="w-full rounded-lg bg-green-600 px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-green-700 disabled:cursor-not-allowed disabled:bg-green-400"
+                >
+                  {postSaving ? 'Publishing...' : 'Publish update'}
+                </button>
+              </div>
+            </form>
+          </div>
+
+          {/* Existing posts */}
+          <div className="rounded-lg bg-white p-4 shadow-sm md:p-6">
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-gray-900">Recent updates</h3>
+              {postsLoading && <span className="text-xs text-gray-500">Loading...</span>}
+            </div>
+            {postsLoading ? (
+              <div className="py-6 text-center text-sm text-gray-600">Loading posts...</div>
+            ) : posts.length === 0 ? (
+              <div className="py-6 text-center text-sm text-gray-600">
+                No updates have been published yet.
+              </div>
+            ) : (
+              <div className="divide-y text-sm">
+                {posts.map((post: any) => (
+                  <div
+                    key={post.id}
+                    className="flex flex-col gap-2 py-3 md:flex-row md:items-center md:justify-between"
+                  >
+                    <div>
+                      <p className="text-xs text-gray-500">
+                        {post.created_at ? new Date(post.created_at).toLocaleDateString() : ''}
+                      </p>
+                      <p className="font-semibold text-gray-900 line-clamp-2">{post.title}</p>
+                      {post.summary && (
+                        <p className="text-xs text-gray-600 line-clamp-2">{post.summary}</p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 pt-1 md:pt-0">
+                      <a
+                        href={`/blog/${post.slug}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                      >
+                        View
+                      </a>
+                      <button
+                        type="button"
+                        onClick={() => handleDeletePost(post.id)}
+                        className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-700"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function SupportTab() {
+  const [requests, setRequests] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [statusFilter, setStatusFilter] = useState<'all' | 'new' | 'in_progress' | 'closed'>('all')
+
+  useEffect(() => {
+    fetchRequests()
+  }, [])
+
+  const fetchRequests = async () => {
+    const { data, error } = await supabase
+      .from('support_requests')
+      .select('*')
+      .order('created_at', { ascending: false })
+
+    if (!error && data) {
+      setRequests(data)
+    }
+    setLoading(false)
+  }
+
+  const handleStatusChange = async (id: string, status: string) => {
+    const { error } = await supabase.from('support_requests').update({ status }).eq('id', id)
+    if (error) {
+      alert('Error updating status: ' + error.message)
+    } else {
+      setRequests((prev) => prev.map((r: any) => (r.id === id ? { ...r, status } : r)))
+    }
+  }
+
+  const filteredRequests =
+    statusFilter === 'all'
+      ? requests
+      : requests.filter((req: any) => (req.status || 'new') === statusFilter)
+
+  return (
+    <section className="space-y-4 md:space-y-6">
+      <div className="flex flex-col justify-between gap-3 md:flex-row md:items-center">
+        <div>
+          <h2 className="text-lg font-semibold text-gray-900">Support / Complaints</h2>
+          <p className="text-sm text-gray-600">
+            View messages from the public Support form and track their status.
+          </p>
+        </div>
+        <div className="flex gap-2 text-xs md:text-sm">
+          {['all', 'new', 'in_progress', 'closed'].map((value) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => setStatusFilter(value as any)}
+              className={`rounded-full px-3 py-1 font-medium transition ${
+                statusFilter === value
+                  ? 'bg-green-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              {value === 'all' ? 'All' : value.replace('_', ' ')}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="rounded-lg bg-white p-4 shadow-sm md:p-6">
+        {loading ? (
+          <p className="text-sm text-gray-600">Loading support requests...</p>
+        ) : filteredRequests.length === 0 ? (
+          <p className="text-sm text-gray-600">No support messages yet.</p>
+        ) : (
+          <div className="space-y-3">
+            {filteredRequests.map((req: any) => (
+              <div
+                key={req.id}
+                className="rounded border border-gray-200 bg-gray-50 p-3 text-sm md:p-4"
+              >
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="space-y-0.5">
+                    <p className="text-xs font-medium text-gray-800">
+                      {req.email}{' '}
+                      {req.name && <span className="text-gray-500">· {req.name}</span>}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {req.category || 'General'} ·{' '}
+                      {req.created_at
+                        ? new Date(req.created_at).toLocaleString()
+                        : 'Unknown time'}
+                    </p>
+                  </div>
+                  <select
+                    value={req.status || 'new'}
+                    onChange={(e) => handleStatusChange(req.id, e.target.value)}
+                    className="rounded-full border border-gray-300 px-3 py-1 text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-green-500"
+                  >
+                    <option value="new">New</option>
+                    <option value="in_progress">In progress</option>
+                    <option value="closed">Closed</option>
+                  </select>
+                </div>
+                <p className="mt-2 whitespace-pre-wrap text-xs text-gray-800 md:text-sm">
+                  {req.message}
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </section>
   )
 }
