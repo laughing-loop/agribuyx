@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import React from 'react';
 
 export default function Home() {
@@ -5,8 +6,11 @@ export default function Home() {
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50">
       {/* Navigation */}
       <nav className="bg-white shadow-sm">
-        <div className="max-w-6xl mx-auto px-4 py-4">
+        <div className="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
           <h1 className="text-2xl font-bold text-green-700">AgriBuyX</h1>
+          <Link href="/admin/login" className="text-green-600 hover:text-green-700 font-semibold">
+            Admin
+          </Link>
         </div>
       </nav>
 
