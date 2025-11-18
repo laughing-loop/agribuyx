@@ -158,6 +158,8 @@ function ProductsTab({ admin }: { admin: Admin | null }) {
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [formStep, setFormStep] = useState(1)
+  const [formMode, setFormMode] = useState<'create' | 'edit'>('create')
+  const [editingProduct, setEditingProduct] = useState<any | null>(null)
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -216,6 +218,26 @@ function ProductsTab({ admin }: { admin: Admin | null }) {
     setFilteredCategories(cats)
   }
 
+  const resetProductForm = () => {
+    setFormData({
+      title: '',
+      description: '',
+      price: '',
+      category_id: '',
+      location: '',
+      contact_phone: '',
+      condition: 'New',
+      warranty: 'No',
+      warranty_period: '',
+      features: '',
+      image_urls: [],
+      image_url_input: '',
+    })
+    setFormStep(1)
+    setFormMode('create')
+    setEditingProduct(null)
+  }
+
   const handleAddProduct = async (e: any) => {
     e.preventDefault()
 
@@ -256,27 +278,69 @@ function ProductsTab({ admin }: { admin: Admin | null }) {
         ])
       }
 
-      setFormData({
-        title: '',
-        description: '',
-        price: '',
-        category_id: '',
-        location: '',
-        contact_phone: '',
-        condition: 'New',
-        warranty: 'No',
-        warranty_period: '',
-        features: '',
-        image_urls: [],
-        image_url_input: '',
-      })
-      setFormStep(1)
+      resetProductForm()
       setShowForm(false)
       setLoading(true)
       fetchProducts()
     } else if (productError) {
       alert('Error creating product: ' + productError.message)
     }
+  }
+
+  const handleUpdateProduct = async (e: any) => {
+    e.preventDefault()
+    if (!editingProduct) return
+
+    const mainImageUrl =
+      formData.image_urls.length > 0
+        ? formData.image_urls[0]
+        : editingProduct.image_url ||
+          'https://via.placeholder.com/300x200?text=Product+Image'
+
+    const { error: updateError } = await supabase
+      .from('products')
+      .update({
+        title: formData.title,
+        description: formData.description,
+        price: parseFloat(formData.price),
+        category_id: formData.category_id,
+        location: formData.location,
+        image_url: mainImageUrl,
+        condition: formData.condition,
+        warranty: formData.warranty,
+        warranty_period: formData.warranty_period,
+        features: formData.features,
+        contact_phone: formData.contact_phone,
+      })
+      .eq('id', editingProduct.id)
+
+    if (updateError) {
+      alert('Error updating product: ' + updateError.message)
+      return
+    }
+
+    await supabase.from('product_images').delete().eq('product_id', editingProduct.id)
+
+    for (const imageUrl of formData.image_urls) {
+      await supabase.from('product_images').insert([
+        {
+          product_id: editingProduct.id,
+          image_url: imageUrl,
+        },
+      ])
+    }
+
+    resetProductForm()
+    setShowForm(false)
+    setLoading(true)
+    fetchProducts()
+  }
+
+  const handleSubmitProduct = async (e: any) => {
+    if (formMode === 'edit') {
+      return handleUpdateProduct(e)
+    }
+    return handleAddProduct(e)
   }
 
   const handleAddImageUrl = () => {
@@ -304,6 +368,44 @@ function ProductsTab({ admin }: { admin: Admin | null }) {
     })
   }
 
+  const handleEditProduct = async (product: any) => {
+    setFormMode('edit')
+    setEditingProduct(product)
+    setShowForm(true)
+    setFormStep(1)
+    setFormData({
+      title: product.title || '',
+      description: product.description || '',
+      price:
+        product.price !== undefined && product.price !== null
+          ? String(product.price)
+          : '',
+      category_id: product.category_id || '',
+      location: product.location || '',
+      contact_phone: product.contact_phone || '',
+      condition: product.condition || 'New',
+      warranty: product.warranty || 'No',
+      warranty_period: product.warranty_period || '',
+      features: product.features || '',
+      image_urls: [],
+      image_url_input: '',
+    })
+
+    const { data: imageRows } = await supabase
+      .from('product_images')
+      .select('*')
+      .eq('product_id', product.id)
+
+    if (imageRows && imageRows.length > 0) {
+      setFormData((prev) => ({
+        ...prev,
+        image_urls: imageRows
+          .map((row: any) => row.image_url)
+          .filter((url: string | null) => Boolean(url)) as string[],
+      }))
+    }
+  }
+
   return (
     <section className="space-y-4 md:space-y-6">
       <div className="flex flex-col justify-between gap-3 md:flex-row md:items-center">
@@ -313,7 +415,15 @@ function ProductsTab({ admin }: { admin: Admin | null }) {
         </div>
         <button
           type="button"
-          onClick={() => setShowForm(!showForm)}
+          onClick={() => {
+            if (showForm) {
+              resetProductForm()
+              setShowForm(false)
+            } else {
+              resetProductForm()
+              setShowForm(true)
+            }
+          }}
           className="w-full rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-green-700 md:w-auto"
         >
           {showForm ? 'Cancel' : '+ Add Product'}
@@ -322,7 +432,7 @@ function ProductsTab({ admin }: { admin: Admin | null }) {
 
       {showForm && (
         <div className="rounded-lg bg-white p-4 shadow-sm md:p-6">
-          <form onSubmit={handleAddProduct} className="space-y-4 md:space-y-6">
+          <form onSubmit={handleSubmitProduct} className="space-y-4 md:space-y-6">
             {/* Step indicator */}
             <div className="flex items-center justify-between text-xs font-medium text-gray-600">
               <div className="flex gap-2">
@@ -562,7 +672,7 @@ function ProductsTab({ admin }: { admin: Admin | null }) {
                     type="submit"
                     className="w-full rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-green-700 md:w-auto"
                   >
-                    Create Product
+                    {formMode === 'edit' ? 'Save changes' : 'Create Product'}
                   </button>
                 </div>
               </div>
@@ -587,6 +697,7 @@ function ProductsTab({ admin }: { admin: Admin | null }) {
                 setLoading(true)
                 fetchProducts()
               }}
+              onEdit={handleEditProduct}
             />
           ))}
         </div>
@@ -605,6 +716,7 @@ function UpdatesTab() {
   const [posts, setPosts] = useState<any[]>([])
   const [postsLoading, setPostsLoading] = useState(true)
   const [postSaving, setPostSaving] = useState(false)
+  const [editingPostId, setEditingPostId] = useState<string | null>(null)
   const [postForm, setPostForm] = useState({
     title: '',
     slug: '',
@@ -693,6 +805,38 @@ function UpdatesTab() {
 
     setPostSaving(true)
 
+    if (editingPostId) {
+      const { error } = await supabase
+        .from('blog_posts')
+        .update({
+          title: postForm.title,
+          slug,
+          summary: postForm.summary,
+          content: postForm.content,
+          image_url: postForm.image_url,
+          video_url: postForm.video_url,
+        })
+        .eq('id', editingPostId)
+
+      if (error) {
+        alert('Error updating post: ' + error.message)
+      } else {
+        setEditingPostId(null)
+        setPostForm({
+          title: '',
+          slug: '',
+          summary: '',
+          content: '',
+          image_url: '',
+          video_url: '',
+        })
+        fetchPosts()
+      }
+
+      setPostSaving(false)
+      return
+    }
+
     const { error } = await supabase.from('blog_posts').insert([
       {
         title: postForm.title,
@@ -722,6 +866,33 @@ function UpdatesTab() {
       alert('Error deleting post: ' + error.message)
     } else {
       setPosts((prev) => prev.filter((p: any) => p.id !== id))
+      if (editingPostId === id) {
+        setEditingPostId(null)
+        setPostForm({
+          title: '',
+          slug: '',
+          summary: '',
+          content: '',
+          image_url: '',
+          video_url: '',
+        })
+      }
+    }
+  }
+
+  const handleEditPost = (post: any) => {
+    setEditingPostId(post.id)
+    setPostForm({
+      title: post.title || '',
+      slug: post.slug || '',
+      summary: post.summary || '',
+      content: post.content || '',
+      image_url: post.image_url || '',
+      video_url: post.video_url || '',
+    })
+
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'smooth' })
     }
   }
 
@@ -791,7 +962,9 @@ function UpdatesTab() {
         {/* Right column: Blog creation + list */}
         <div className="space-y-4 lg:col-span-8 xl:col-span-9">
           <div className="rounded-lg bg-white p-4 shadow-sm md:p-6">
-            <h3 className="mb-3 text-sm font-semibold text-gray-900">New update</h3>
+            <h3 className="mb-3 text-sm font-semibold text-gray-900">
+              {editingPostId ? 'Edit update' : 'New update'}
+            </h3>
             <p className="mb-4 text-xs text-gray-600">
               Use this for short market updates, platform news, or tips. You can use simple Markdown for
               bullets, links, and extra images.
@@ -868,7 +1041,13 @@ function UpdatesTab() {
                   disabled={postSaving}
                   className="w-full rounded-lg bg-green-600 px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-green-700 disabled:cursor-not-allowed disabled:bg-green-400"
                 >
-                  {postSaving ? 'Publishing...' : 'Publish update'}
+                  {postSaving
+                    ? editingPostId
+                      ? 'Saving...'
+                      : 'Publishing...'
+                    : editingPostId
+                      ? 'Save changes'
+                      : 'Publish update'}
                 </button>
               </div>
             </form>
@@ -911,6 +1090,13 @@ function UpdatesTab() {
                       >
                         View
                       </a>
+                      <button
+                        type="button"
+                        onClick={() => handleEditPost(post)}
+                        className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                      >
+                        Edit
+                      </button>
                       <button
                         type="button"
                         onClick={() => handleDeletePost(post.id)}
@@ -1228,7 +1414,15 @@ function VendorsTab() {
   )
 }
 
-function ProductCard({ product, onDeleted }: { product: any; onDeleted: () => void }) {
+function ProductCard({
+  product,
+  onDeleted,
+  onEdit,
+}: {
+  product: any
+  onDeleted: () => void
+  onEdit: (product: any) => void
+}) {
   const handleDelete = async () => {
     if (!confirm('Delete this product?')) return
 
@@ -1261,13 +1455,22 @@ function ProductCard({ product, onDeleted }: { product: any; onDeleted: () => vo
         )}
         {product.description && <MultiLineText text={product.description} />}
         {product.features && <MultiLineText text={product.features} />}
-        <button
-          type="button"
-          onClick={handleDelete}
-          className="mt-3 w-full rounded-lg bg-red-600 py-2 text-sm font-medium text-white transition hover:bg-red-700"
-        >
-          Delete
-        </button>
+        <div className="mt-3 flex gap-2">
+          <button
+            type="button"
+            onClick={() => onEdit(product)}
+            className="flex-1 rounded-lg border border-gray-300 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+          >
+            Edit
+          </button>
+          <button
+            type="button"
+            onClick={handleDelete}
+            className="flex-1 rounded-lg bg-red-600 py-2 text-sm font-medium text-white transition hover:bg-red-700"
+          >
+            Delete
+          </button>
+        </div>
       </div>
     </div>
   )
