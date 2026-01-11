@@ -26,7 +26,7 @@ function getEnvVar(key: string, defaultValue?: string, isClientSide = false): st
         return defaultValue || ''
     }
 
-    return value
+    return value || ''
 }
 
 // Supabase Configuration
