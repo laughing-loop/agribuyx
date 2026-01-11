@@ -5,6 +5,7 @@ import Image from 'next/image'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { supabase } from '@/lib/supabase'
+import { getThumbnailUrl } from '@/lib/cloudinary'
 
 interface BlogPost {
   id: string
@@ -148,7 +149,7 @@ export default function BlogPostPage() {
         {post.image_url && (
           <div className="mb-6 overflow-hidden rounded-lg">
             <img
-              src={post.image_url}
+              src={getThumbnailUrl(post.image_url, 800, 400)}
               alt={post.title}
               className="h-56 w-full object-cover"
             />

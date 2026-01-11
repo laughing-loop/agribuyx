@@ -3,6 +3,7 @@ import { useRouter } from 'next/router'
 import Link from 'next/link'
 import Image from 'next/image'
 import { supabase } from '@/lib/supabase'
+import { getWatermarkedImageUrl as getCloudinaryUrl, getThumbnailUrl } from '@/lib/cloudinary'
 
 interface Product {
   id: string
@@ -34,7 +35,7 @@ interface ProductImage {
 
 function getWatermarkedImageUrl(url: string) {
   if (!url) return url
-  return url
+  return getCloudinaryUrl(url)
 }
 
 export default function ProductDetail() {
@@ -320,11 +321,10 @@ export default function ProductDetail() {
               <button
                 type="button"
                 onClick={toggleWishlist}
-                className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium transition ${
-                  isInWishlist
+                className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium transition ${isInWishlist
                     ? 'border-red-200 bg-red-50 text-red-600'
                     : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
-                }`}
+                  }`}
               >
                 <span className="mr-1">{isInWishlist ? '❤' : '♡'}</span>
                 <span>{isInWishlist ? 'Saved' : 'Save'}</span>

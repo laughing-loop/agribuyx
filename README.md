@@ -57,7 +57,26 @@ Create `.env.local`:
 ```
 NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_key
+
+# Cloudinary (Image CDN)
+NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME=your_cloud_name
+NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET=your_upload_preset
+CLOUDINARY_API_KEY=your_api_key
+CLOUDINARY_API_SECRET=your_api_secret
 ```
+
+### Cloudinary Setup
+
+1. Create a free account at [cloudinary.com](https://cloudinary.com)
+2. Get your credentials from the dashboard
+3. Create an unsigned upload preset:
+   - Go to Settings → Upload
+   - Scroll to "Upload presets"
+   - Click "Add upload preset"
+   - Set signing mode to "Unsigned"
+   - Name it (e.g., `agribuyx_unsigned`)
+   - Save
+4. Add credentials to `.env.local`
 
 ---
 
@@ -91,10 +110,10 @@ docs/               - Documentation
 
 ### Phase 1: Web Platform (Current)
 - [x] Landing page
-- [ ] Admin dashboard
-- [ ] Product listing pages
-- [ ] Vercel deployment
-- [ ] Supabase setup
+- [x] Admin dashboard
+- [x] Product listing pages
+- [x] Vercel deployment
+- [x] Supabase setup
 
 ### Phase 2: Mobile App (After Phase 1)
 - [ ] React Native setup

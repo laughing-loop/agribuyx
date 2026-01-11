@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { supabase } from '@/lib/supabase'
+import { getThumbnailUrl } from '@/lib/cloudinary'
 
 interface BlogPost {
   id: string
@@ -78,7 +79,7 @@ export default function BlogIndex() {
                 <article className="cursor-pointer overflow-hidden rounded-lg bg-white shadow transition hover:shadow-md">
                   {post.image_url && (
                     <img
-                      src={post.image_url}
+                      src={getThumbnailUrl(post.image_url, 600, 300)}
                       alt={post.title}
                       className="h-40 w-full object-cover"
                     />

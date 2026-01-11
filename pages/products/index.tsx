@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { supabase } from '@/lib/supabase'
+import { getWatermarkedImageUrl as getCloudinaryUrl, getThumbnailUrl } from '@/lib/cloudinary'
 
 interface Product {
   id: string
@@ -9,15 +10,21 @@ interface Product {
   description: string
   price: number
   location: string
-  image_url: string
   category_id: string
   created_at: string
+  image_url?: string | null
+  condition?: string
+  warranty?: string
+  warranty_period?: string
+  features?: string
+  contact_phone?: string
 }
 
 interface Category {
   id: string
   name: string
   icon: string
+  description?: string
   parent_id?: string | null
 }
 
@@ -32,7 +39,8 @@ interface BlogPost {
 
 function getWatermarkedImageUrl(url: string) {
   if (!url) return url
-  return url
+  // Use thumbnail for listing page (smaller, optimized)
+  return getThumbnailUrl(url, 400, 300)
 }
 
 export default function Products() {
@@ -349,11 +357,10 @@ export default function Products() {
               <div className="grid grid-cols-4 sm:grid-cols-4 md:grid-cols-4 lg:grid-cols-1 gap-2">
                 <button
                   onClick={() => setSelectedCategory('')}
-                  className={`w-full text-left px-4 py-2 rounded-lg transition text-sm ${
-                    selectedCategory === ''
-                      ? 'bg-green-600 text-white'
-                      : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
-                  }`}
+                  className={`w-full text-left px-4 py-2 rounded-lg transition text-sm ${selectedCategory === ''
+                    ? 'bg-green-600 text-white'
+                    : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
+                    }`}
                 >
                   All Products
                 </button>
@@ -361,11 +368,10 @@ export default function Products() {
                   <button
                     key={cat.id}
                     onClick={() => handleMainCategoryClick(cat)}
-                    className={`w-full rounded-lg transition flex flex-col items-center justify-center gap-1 px-2 py-2 text-[11px] sm:text-xs md:text-sm lg:flex-row lg:items-center lg:justify-between lg:px-4 lg:py-2 ${
-                      selectedCategory === cat.id
-                        ? 'bg-green-600 text-white'
-                        : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
-                    }`}
+                    className={`w-full rounded-lg transition flex flex-col items-center justify-center gap-1 px-2 py-2 text-[11px] sm:text-xs md:text-sm lg:flex-row lg:items-center lg:justify-between lg:px-4 lg:py-2 ${selectedCategory === cat.id
+                      ? 'bg-green-600 text-white'
+                      : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
+                      }`}
                   >
                     <div className="flex flex-col items-center gap-1 lg:flex-row lg:items-center lg:gap-2">
                       <span className="text-lg lg:text-base">{cat.icon}</span>
@@ -439,11 +445,10 @@ export default function Products() {
                         setSelectedCategory(subcat.id)
                         setActiveMainCategoryId(null)
                       }}
-                      className={`w-full text-left px-3 py-1.5 rounded-lg text-sm transition ${
-                        selectedCategory === subcat.id
-                          ? 'bg-green-600 text-white'
-                          : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
-                      }`}
+                      className={`w-full text-left px-3 py-1.5 rounded-lg text-sm transition ${selectedCategory === subcat.id
+                        ? 'bg-green-600 text-white'
+                        : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
+                        }`}
                     >
                       <span className="mr-1">{subcat.icon}</span>
                       <span>{subcat.name}</span>

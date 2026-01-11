@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/router'
 import { supabase } from '@/lib/supabase'
+import { CldUploadWidget } from 'next-cloudinary'
+import { config } from '@/lib/config'
 
 interface Admin {
   id: string
@@ -138,11 +140,10 @@ function TabPill({
     <button
       type="button"
       onClick={onClick}
-      className={`whitespace-nowrap rounded-full px-4 py-2 text-sm font-medium transition ${
-        active
-          ? 'bg-green-600 text-white shadow-sm'
-          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-      }`}
+      className={`whitespace-nowrap rounded-full px-4 py-2 text-sm font-medium transition ${active
+        ? 'bg-green-600 text-white shadow-sm'
+        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+        }`}
       aria-pressed={active}
     >
       {label}
@@ -295,7 +296,7 @@ function ProductsTab({ admin }: { admin: Admin | null }) {
       formData.image_urls.length > 0
         ? formData.image_urls[0]
         : editingProduct.image_url ||
-          'https://via.placeholder.com/300x200?text=Product+Image'
+        'https://via.placeholder.com/300x200?text=Product+Image'
 
     const { error: updateError } = await supabase
       .from('products')
@@ -443,13 +444,12 @@ function ProductsTab({ admin }: { admin: Admin | null }) {
                   return (
                     <div
                       key={label}
-                      className={`flex items-center gap-1 rounded-full px-3 py-1 ${
-                        active
-                          ? 'bg-green-100 text-green-700'
-                          : completed
+                      className={`flex items-center gap-1 rounded-full px-3 py-1 ${active
+                        ? 'bg-green-100 text-green-700'
+                        : completed
                           ? 'bg-gray-100 text-gray-600'
                           : 'bg-gray-50 text-gray-500'
-                      }`}
+                        }`}
                     >
                       <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white text-[10px]">
                         {step}
@@ -593,24 +593,62 @@ function ProductsTab({ admin }: { admin: Admin | null }) {
             {formStep === 3 && (
               <div className="space-y-4">
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700">Product Image URLs</label>
-                  <div className="flex gap-2 mb-3 flex-col sm:flex-row">
-                    <input
-                      type="url"
-                      placeholder="https://example.com/image.jpg"
-                      value={formData.image_url_input}
-                      onChange={(e) => setFormData({ ...formData, image_url_input: e.target.value })}
-                      className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
-                    />
-                    <button
-                      type="button"
-                      onClick={handleAddImageUrl}
-                      className="w-full rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700 sm:w-auto"
-                    >
-                      + Add
-                    </button>
-                  </div>
-                  <p className="text-xs text-gray-500">First image will be used as the main product image.</p>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">Product Images</label>
+
+                  <CldUploadWidget
+                    uploadPreset={config.cloudinary.uploadPreset}
+                    onSuccess={(result: any) => {
+                      if (result.event === 'success') {
+                        const imageUrl = result.info.secure_url
+                        if (!formData.image_urls.includes(imageUrl)) {
+                          setFormData({
+                            ...formData,
+                            image_urls: [...formData.image_urls, imageUrl],
+                          })
+                        }
+                      }
+                    }}
+                    options={{
+                      cloudName: config.cloudinary.cloudName,
+                      sources: ['local', 'url', 'camera'],
+                      multiple: true,
+                      maxFiles: 10,
+                      styles: {
+                        palette: {
+                          window: '#FFFFFF',
+                          windowBorder: '#90A0B3',
+                          tabIcon: '#16a34a',
+                          menuIcons: '#5A616A',
+                          textDark: '#000000',
+                          textLight: '#FFFFFF',
+                          link: '#16a34a',
+                          action: '#16a34a',
+                          inactiveTabIcon: '#0E2F5A',
+                          error: '#F44235',
+                          inProgress: '#16a34a',
+                          complete: '#20B832',
+                          sourceBg: '#E4EBF1',
+                        },
+                      },
+                    }}
+                  >
+                    {({ open }: any) => (
+                      <button
+                        type="button"
+                        onClick={() => open()}
+                        className="w-full rounded-lg bg-blue-600 px-4 py-3 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700 flex items-center justify-center gap-2"
+                      >
+                        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                        </svg>
+                        Upload Images from Cloudinary
+                      </button>
+                    )}
+                  </CldUploadWidget>
+
+                  <p className="mt-2 text-xs text-gray-500">
+                    First image will be used as the main product image. You can upload multiple images.
+                  </p>
 
                   {formData.image_urls.length > 0 && (
                     <div className="mt-3 space-y-2">
@@ -1166,11 +1204,10 @@ function SupportTab() {
               key={value}
               type="button"
               onClick={() => setStatusFilter(value as any)}
-              className={`rounded-full px-3 py-1 font-medium transition ${
-                statusFilter === value
-                  ? 'bg-green-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
+              className={`rounded-full px-3 py-1 font-medium transition ${statusFilter === value
+                ? 'bg-green-600 text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
             >
               {value === 'all' ? 'All' : value.replace('_', ' ')}
             </button>
@@ -1388,11 +1425,10 @@ function VendorsTab() {
                     </td>
                     <td className="px-4 py-3">
                       <span
-                        className={`rounded-full px-3 py-1 text-xs font-medium ${
-                          vendor.is_verified
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-yellow-100 text-yellow-800'
-                        }`}
+                        className={`rounded-full px-3 py-1 text-xs font-medium ${vendor.is_verified
+                          ? 'bg-green-100 text-green-800'
+                          : 'bg-yellow-100 text-yellow-800'
+                          }`}
                       >
                         {vendor.is_verified ? 'Verified' : 'Pending'}
                       </span>
