@@ -785,7 +785,10 @@ export default function Products() {
 
       {/* Footer */}
       <footer className="bg-gray-900 text-white text-center py-8 mt-20">
-        <p>&copy; 2025 AgriBuyX. All rights reserved. | agribuyx.com</p>
+        <p className="mb-2">&copy; 2025 AgriBuyX. All rights reserved. | agribuyx.com</p>
+        <Link href="/admin/login" className="text-xs text-gray-500 hover:text-gray-300 transition-colors uppercase tracking-wider">
+          Vendor Office
+        </Link>
       </footer>
     </div>
   )

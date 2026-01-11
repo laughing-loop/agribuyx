@@ -19,6 +19,16 @@ interface Product {
   warranty_period?: string
   features?: string
   contact_phone?: string
+  created_by?: string
+}
+
+interface Vendor {
+  id: string
+  business_name: string
+  whatsapp_url?: string
+  facebook_url?: string
+  tiktok_url?: string
+  instagram_url?: string
 }
 
 interface Category {
@@ -43,6 +53,7 @@ export default function ProductDetail() {
   const { id } = router.query
   const [product, setProduct] = useState<Product | null>(null)
   const [category, setCategory] = useState<Category | null>(null)
+  const [vendor, setVendor] = useState<Vendor | null>(null)
   const [loading, setLoading] = useState(true)
   const [images, setImages] = useState<ProductImage[]>([])
   const [relatedProducts, setRelatedProducts] = useState<Product[]>([])
@@ -100,6 +111,18 @@ export default function ProductDetail() {
         .eq('product_id', productData.id)
 
       setImages(imageData || [])
+
+      if (productData.created_by) {
+        const { data: vendorData } = await supabase
+          .from('vendors')
+          .select('id, business_name, whatsapp_url, facebook_url, tiktok_url, instagram_url')
+          .eq('id', productData.created_by)
+          .single()
+
+        if (vendorData) {
+          setVendor(vendorData)
+        }
+      }
 
       await fetchRelatedProducts(productData as Product)
     }
@@ -322,8 +345,8 @@ export default function ProductDetail() {
                 type="button"
                 onClick={toggleWishlist}
                 className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium transition ${isInWishlist
-                    ? 'border-red-200 bg-red-50 text-red-600'
-                    : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
+                  ? 'border-red-200 bg-red-50 text-red-600'
+                  : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
                   }`}
               >
                 <span className="mr-1">{isInWishlist ? '❤' : '♡'}</span>
@@ -390,16 +413,20 @@ export default function ProductDetail() {
               </div>
 
               <div className="pt-2 border-t border-gray-100">
-                <h3 className="mb-3 text-sm font-semibold text-gray-800">Contact seller</h3>
+                <div className="mb-3">
+                  <h3 className="text-sm font-semibold text-gray-800">Contact seller</h3>
+                  {vendor && (
+                    <p className="text-xs text-gray-600">Sold by: <span className="font-medium text-green-700">{vendor.business_name}</span></p>
+                  )}
+                </div>
+
                 <div className="flex flex-col gap-2">
                   <a
-                    href={(() => {
+                    href={vendor?.whatsapp_url || (() => {
                       const raw = product.contact_phone || ''
                       const digits = raw.replace(/[^0-9]/g, '')
                       const message = encodeURIComponent(`I'm interested in ${product.title}`)
-                      return digits
-                        ? `https://wa.me/${digits}?text=${message}`
-                        : `https://wa.me/?text=${message}`
+                      return digits ? `https://wa.me/${digits}?text=${message}` : `https://wa.me/?text=${message}`
                     })()}
                     target="_blank"
                     rel="noopener noreferrer"
@@ -407,23 +434,45 @@ export default function ProductDetail() {
                   >
                     💬 WhatsApp
                   </a>
-                  <a
-                    href={(() => {
-                      const url = `https://agribuyx.com/products/${product.id}`
-                      const text = encodeURIComponent(`I'm interested in ${product.title}`)
-                      return `https://t.me/share/url?url=${encodeURIComponent(url)}&text=${text}`
-                    })()}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex-1 rounded-lg bg-blue-500 py-2.5 text-center text-sm font-semibold text-white transition hover:bg-blue-600"
-                  >
-                    📢 Telegram
-                  </a>
+
+                  {vendor?.facebook_url && (
+                    <a
+                      href={vendor.facebook_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-1 rounded-lg bg-blue-800 py-2.5 text-center text-sm font-semibold text-white transition hover:bg-blue-900"
+                    >
+                      FB Facebook
+                    </a>
+                  )}
+
+                  {vendor?.tiktok_url && (
+                    <a
+                      href={vendor.tiktok_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-1 rounded-lg bg-black py-2.5 text-center text-sm font-semibold text-white transition hover:bg-gray-900"
+                    >
+                      🎵 TikTok
+                    </a>
+                  )}
+
+                  {vendor?.instagram_url && (
+                    <a
+                      href={vendor.instagram_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-1 rounded-lg bg-gradient-to-r from-purple-500 via-pink-500 to-orange-500 py-2.5 text-center text-sm font-semibold text-white transition opacity-90 hover:opacity-100"
+                    >
+                      📸 Instagram
+                    </a>
+                  )}
+
                   <a
                     href={`mailto:support@agribuyx.com?subject=Interested in ${product.title}`}
-                    className="flex-1 rounded-lg bg-blue-600 py-2.5 text-center text-sm font-semibold text-white transition hover:bg-blue-700"
+                    className="flex-1 rounded-lg bg-gray-600 py-2.5 text-center text-sm font-semibold text-white transition hover:bg-gray-700"
                   >
-                    📧 Email
+                    📧 Email Support
                   </a>
                 </div>
               </div>
@@ -435,6 +484,17 @@ export default function ProductDetail() {
                   className="inline-flex items-center gap-1 text-[11px] font-medium text-green-700 hover:text-green-800"
                 >
                   <span>Share via WhatsApp</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const url = window.location.href;
+                    const text = `I'm interested in ${product.title}`;
+                    window.open(`https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`, '_blank');
+                  }}
+                  className="inline-flex items-center gap-1 text-[11px] font-medium text-blue-600 hover:text-blue-700"
+                >
+                  <span>Telegram</span>
                 </button>
                 <button
                   type="button"

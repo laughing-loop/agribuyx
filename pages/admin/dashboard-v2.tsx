@@ -3,11 +3,20 @@ import { useRouter } from 'next/router'
 import { supabase } from '@/lib/supabase'
 import { CldUploadWidget } from 'next-cloudinary'
 import { config } from '@/lib/config'
+import VendorsPage from './vendors'
+
+// Simple role check based on strict email list
+const SUPER_ADMINS = ['support@agribuyx.com', 'admin@agribuyx.com', 'jolydoh4@gmail.com'] // Replace with actual owner emails or env var
+const isSuperAdmin = (email?: string) => {
+  if (!email) return false
+  return SUPER_ADMINS.includes(email) || email === process.env.NEXT_PUBLIC_ADMIN_EMAIL
+}
 
 interface Admin {
   id: string
   email: string
   name: string
+  role: 'admin' | 'vendor'
 }
 
 export default function AdminDashboardV2() {
@@ -17,19 +26,95 @@ export default function AdminDashboardV2() {
   const [activeTab, setActiveTab] = useState<'products' | 'categories' | 'vendors' | 'updates' | 'support'>(
     'products'
   )
+  const [needsSync, setNeedsSync] = useState(false)
+  const [syncing, setSyncing] = useState(false)
 
   useEffect(() => {
-    const token = localStorage.getItem('adminToken')
-    if (!token) {
-      router.push('/admin/login')
-    } else {
-      setAdmin(JSON.parse(token))
+    const checkUser = async () => {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) {
+        router.push('/admin/login')
+        return
+      }
+
+      const email = session.user.email!
+      let role: 'admin' | 'vendor' = 'vendor'
+      let existsInDb = false
+
+      // 1. Check if user is in admins table
+      const { data: adminData } = await supabase
+        .from('admins')
+        .select('id')
+        .eq('email', email)
+        .single()
+
+      if (adminData) {
+        role = 'admin'
+        existsInDb = true
+      } else {
+        // 2. Fallback: check if they are in vendors table
+        const { data: vendorData } = await supabase
+          .from('vendors')
+          .select('id')
+          .eq('email', email)
+          .single()
+
+        if (vendorData) {
+          role = 'vendor'
+          existsInDb = true
+        }
+      }
+
+      const superAdminFlag = isSuperAdmin(email)
+      if (superAdminFlag) {
+        role = 'admin'
+      }
+
+      if (!existsInDb) {
+        setNeedsSync(true)
+      }
+
+      setAdmin({
+        id: session.user.id,
+        email: email,
+        name: session.user.user_metadata.full_name || email.split('@')[0] || 'User',
+        role: role,
+      })
       setLoading(false)
     }
+    checkUser()
   }, [router])
 
-  const handleLogout = () => {
-    localStorage.removeItem('adminToken')
+  const handleSyncProfile = async () => {
+    if (!admin) return
+    setSyncing(true)
+    try {
+      const res = await fetch('/api/admin/sync-profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: admin.email,
+          userId: admin.id,
+          fullName: admin.name,
+          isAdmin: admin.role === 'admin'
+        })
+      })
+      const data = await res.json()
+      if (res.ok) {
+        alert('Profile synchronized successfully! You can now create products.')
+        setNeedsSync(false)
+      } else {
+        alert('Sync failed: ' + data.error)
+      }
+    } catch (err: any) {
+      alert('Error syncing profile: ' + err.message)
+    } finally {
+      setSyncing(false)
+    }
+  }
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut()
     router.push('/admin/login')
   }
 
@@ -44,13 +129,33 @@ export default function AdminDashboardV2() {
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="sticky top-0 z-40 border-b bg-white">
+        {/* Profile Sync Warning for Super Admins */}
+        {needsSync && (
+          <div className="bg-amber-50 border-b border-amber-200 px-4 py-2.5">
+            <div className="mx-auto max-w-7xl flex flex-col md:flex-row items-center justify-between gap-3 text-center md:text-left">
+              <div className="flex items-center gap-2 text-amber-800 text-sm font-medium">
+                <svg className="h-5 w-5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <span>Profile not synchronized. You might face issues creating products.</span>
+              </div>
+              <button
+                onClick={handleSyncProfile}
+                disabled={syncing}
+                className="rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-amber-700 disabled:opacity-50"
+              >
+                {syncing ? 'Syncing...' : '🛠️ Repair My Profile'}
+              </button>
+            </div>
+          </div>
+        )}
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 md:py-4">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-green-600">
-              Dashboard v2
+              Merchant Portal
             </p>
-            <h1 className="text-xl font-bold text-gray-900 md:text-2xl">AgriBuyX Admin</h1>
-            <p className="hidden text-sm text-gray-600 sm:block">{admin?.name || admin?.email}</p>
+            <h1 className="text-xl font-bold text-gray-900 md:text-2xl">AgriBuyX Vendor Office</h1>
+            <p className="hidden text-sm text-gray-600 sm:block">Welcome, {admin?.name || admin?.email}</p>
           </div>
           <button
             type="button"
@@ -78,7 +183,7 @@ export default function AdminDashboardV2() {
           <div className="mx-auto max-w-7xl px-4">
             <div className="flex gap-2 overflow-x-auto py-2">
               <TabPill
-                label="Products"
+                label="My Inventory"
                 value="products"
                 active={activeTab === 'products'}
                 onClick={() => setActiveTab('products')}
@@ -89,24 +194,28 @@ export default function AdminDashboardV2() {
                 active={activeTab === 'categories'}
                 onClick={() => setActiveTab('categories')}
               />
-              <TabPill
-                label="Vendors"
-                value="vendors"
-                active={activeTab === 'vendors'}
-                onClick={() => setActiveTab('vendors')}
-              />
+              {admin?.role === 'admin' && (
+                <TabPill
+                  label="Vendors"
+                  value="vendors"
+                  active={activeTab === 'vendors'}
+                  onClick={() => setActiveTab('vendors')}
+                />
+              )}
               <TabPill
                 label="Updates & Social"
                 value="updates"
                 active={activeTab === 'updates'}
                 onClick={() => setActiveTab('updates')}
               />
-              <TabPill
-                label="Support / Complaints"
-                value="support"
-                active={activeTab === 'support'}
-                onClick={() => setActiveTab('support')}
-              />
+              {admin?.role === 'admin' && (
+                <TabPill
+                  label="Support Hub"
+                  value="support"
+                  active={activeTab === 'support'}
+                  onClick={() => setActiveTab('support')}
+                />
+              )}
             </div>
           </div>
         </nav>
@@ -115,9 +224,9 @@ export default function AdminDashboardV2() {
       <main className="mx-auto max-w-7xl px-4 py-4 md:py-6">
         {activeTab === 'products' && <ProductsTab admin={admin} />}
         {activeTab === 'categories' && <CategoriesTab />}
-        {activeTab === 'vendors' && <VendorsTab />}
-        {activeTab === 'updates' && <UpdatesTab />}
-        {activeTab === 'support' && <SupportTab />}
+        {activeTab === 'vendors' && admin?.role === 'admin' && <VendorsPage />}
+        {activeTab === 'updates' && <UpdatesTab admin={admin} />}
+        {activeTab === 'support' && admin?.role === 'admin' && <SupportTab />}
       </main>
     </div>
   )
@@ -197,10 +306,20 @@ function ProductsTab({ admin }: { admin: Admin | null }) {
   }, [categorySearch, categories])
 
   const fetchProducts = async () => {
-    const { data, error } = await supabase
+    if (!admin?.id) return
+
+    let query = supabase
       .from('products')
       .select('*')
       .order('created_at', { ascending: false })
+
+    // Non-admins (vendors) only see their own products.
+    // Admins see everything on the platform.
+    if (admin.role !== 'admin') {
+      query = query.eq('created_by', admin.id)
+    }
+
+    const { data, error } = await query
 
     if (!error) {
       setProducts(data || [])
@@ -461,260 +580,269 @@ function ProductsTab({ admin }: { admin: Admin | null }) {
               </div>
             </div>
 
-            {/* Step 1: Basic info */}
-            {formStep === 1 && (
-              <div className="space-y-4">
-                <div className="grid gap-4 md:grid-cols-2">
-                  <InputField
-                    label="Title *"
-                    value={formData.title}
-                    onChange={(value) => setFormData({ ...formData, title: value })}
-                    placeholder="e.g. Fresh Tomatoes"
-                    required
-                  />
-                  <InputField
-                    label="Price (GHS) *"
-                    type="number"
-                    value={formData.price}
-                    onChange={(value) => setFormData({ ...formData, price: value })}
-                    placeholder="0.00"
-                    required
-                  />
-                  <InputField
-                    label="Location *"
-                    value={formData.location}
-                    onChange={(value) => setFormData({ ...formData, location: value })}
-                    placeholder="e.g. Kumasi, Central Region"
-                    required
-                  />
-                  <div>
-                    <label className="mb-1 block text-sm font-medium text-gray-700">Category</label>
-                    <input
-                      type="text"
-                      placeholder="Search categories..."
-                      value={categorySearch}
-                      onChange={(e) => setCategorySearch(e.target.value)}
-                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
-                    />
-                    <select
-                      value={formData.category_id}
-                      onChange={(e) => setFormData({ ...formData, category_id: e.target.value })}
-                      className="mt-2 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
-                      aria-label="Product Category"
-                    >
-                      <option value="">Select category</option>
-                      {filteredCategories.map((cat) => (
-                        <option key={cat.id} value={cat.id}>
-                          {cat.icon} {cat.name}
-                        </option>
-                      ))}
-                    </select>
-                    <p className="mt-1 text-xs text-gray-500">
-                      Showing {filteredCategories.length} categories
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex justify-end gap-3 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setFormStep(2)}
-                    className="w-full rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-green-700 md:w-auto"
-                  >
-                    Next
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* Step 2: Details */}
-            {formStep === 2 && (
-              <div className="space-y-4">
-                <div className="grid gap-4 md:grid-cols-2">
-                  <InputField
-                    label="Contact Phone"
-                    value={formData.contact_phone}
-                    onChange={(value) => setFormData({ ...formData, contact_phone: value })}
-                    placeholder="e.g. +233 xxx xxx xxx"
-                  />
-                  <SelectField
-                    label="Condition"
-                    value={formData.condition}
-                    onChange={(value) => setFormData({ ...formData, condition: value })}
-                    options={[
-                      { value: 'New', label: 'New' },
-                      { value: 'Like New', label: 'Like New' },
-                      { value: 'Good', label: 'Good' },
-                      { value: 'Fair', label: 'Fair' },
-                      { value: 'Needs Repair', label: 'Needs Repair' },
-                    ]}
-                    placeholder="Select condition"
-                  />
-                  <SelectField
-                    label="Warranty"
-                    value={formData.warranty}
-                    onChange={(value) => setFormData({ ...formData, warranty: value })}
-                    options={[
-                      { value: 'No', label: 'No Warranty' },
-                      { value: 'Yes', label: 'Has Warranty' },
-                    ]}
-                    placeholder="Select warranty"
-                  />
-                  {formData.warranty === 'Yes' && (
-                    <InputField
-                      label="Warranty Period"
-                      value={formData.warranty_period}
-                      onChange={(value) => setFormData({ ...formData, warranty_period: value })}
-                      placeholder="e.g. 1 year, 6 months"
-                    />
-                  )}
-                </div>
-
-                <div className="flex justify-between gap-3 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setFormStep(1)}
-                    className="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 md:w-auto"
-                  >
-                    Back
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setFormStep(3)}
-                    className="w-full rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-green-700 md:w-auto"
-                  >
-                    Next
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* Step 3: Media & description */}
-            {formStep === 3 && (
-              <div className="space-y-4">
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700">Product Images</label>
-
-                  <CldUploadWidget
-                    uploadPreset={config.cloudinary.uploadPreset}
-                    onSuccess={(result: any) => {
-                      if (result.event === 'success') {
-                        const imageUrl = result.info.secure_url
-                        if (!formData.image_urls.includes(imageUrl)) {
-                          setFormData({
-                            ...formData,
-                            image_urls: [...formData.image_urls, imageUrl],
-                          })
-                        }
-                      }
-                    }}
-                    options={{
-                      cloudName: config.cloudinary.cloudName,
-                      sources: ['local', 'url', 'camera'],
-                      multiple: true,
-                      maxFiles: 10,
-                      styles: {
-                        palette: {
-                          window: '#FFFFFF',
-                          windowBorder: '#90A0B3',
-                          tabIcon: '#16a34a',
-                          menuIcons: '#5A616A',
-                          textDark: '#000000',
-                          textLight: '#FFFFFF',
-                          link: '#16a34a',
-                          action: '#16a34a',
-                          inactiveTabIcon: '#0E2F5A',
-                          error: '#F44235',
-                          inProgress: '#16a34a',
-                          complete: '#20B832',
-                          sourceBg: '#E4EBF1',
-                        },
-                      },
-                    }}
-                  >
-                    {({ open }: any) => (
-                      <button
-                        type="button"
-                        onClick={() => open()}
-                        className="w-full rounded-lg bg-blue-600 px-4 py-3 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700 flex items-center justify-center gap-2"
-                      >
-                        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                        </svg>
-                        Upload Images from Cloudinary
-                      </button>
-                    )}
-                  </CldUploadWidget>
-
-                  <p className="mt-2 text-xs text-gray-500">
-                    First image will be used as the main product image. You can upload multiple images.
-                  </p>
-
-                  {formData.image_urls.length > 0 && (
-                    <div className="mt-3 space-y-2">
-                      {formData.image_urls.map((url, index) => (
-                        <div
-                          key={index}
-                          className="flex items-center gap-2 rounded border border-gray-200 bg-gray-50 p-2"
-                        >
-                          <img
-                            src={url}
-                            alt={`Preview ${index + 1}`}
-                            className="h-10 w-10 rounded object-cover"
-                            onError={(e) => {
-                              (e.target as HTMLImageElement).src = 'https://via.placeholder.com/40?text=?'
-                            }}
+            <CldUploadWidget
+              uploadPreset={config.cloudinary.uploadPreset}
+              onSuccess={(result: any) => {
+                if (result.event === 'success') {
+                  const imageUrl = result.info.secure_url
+                  if (!formData.image_urls.includes(imageUrl)) {
+                    setFormData({
+                      ...formData,
+                      image_urls: [...formData.image_urls, imageUrl],
+                    })
+                  }
+                }
+              }}
+              options={{
+                cloudName: config.cloudinary.cloudName,
+                sources: ['local', 'url', 'camera'],
+                multiple: true,
+                maxFiles: 10,
+                styles: {
+                  palette: {
+                    window: '#FFFFFF',
+                    windowBorder: '#90A0B3',
+                    tabIcon: '#16a34a',
+                    menuIcons: '#5A616A',
+                    textDark: '#000000',
+                    textLight: '#FFFFFF',
+                    link: '#16a34a',
+                    action: '#16a34a',
+                    inactiveTabIcon: '#0E2F5A',
+                    error: '#F44235',
+                    inProgress: '#16a34a',
+                    complete: '#20B832',
+                    sourceBg: '#E4EBF1',
+                  },
+                },
+              }}
+            >
+              {({ open }: any) => (
+                <>
+                  {/* Step 1: Basic info */}
+                  {formStep === 1 && (
+                    <div className="space-y-4">
+                      <div className="grid gap-4 md:grid-cols-2">
+                        <InputField
+                          label="Title *"
+                          value={formData.title}
+                          onChange={(value) => setFormData({ ...formData, title: value })}
+                          placeholder="e.g. Fresh Tomatoes"
+                          required
+                        />
+                        <InputField
+                          label="Price (GHS) *"
+                          type="number"
+                          value={formData.price}
+                          onChange={(value) => setFormData({ ...formData, price: value })}
+                          placeholder="0.00"
+                          required
+                        />
+                        <InputField
+                          label="Location *"
+                          value={formData.location}
+                          onChange={(value) => setFormData({ ...formData, location: value })}
+                          placeholder="e.g. Kumasi, Central Region"
+                          required
+                        />
+                        <div>
+                          <label className="mb-1 block text-sm font-medium text-gray-700">Category</label>
+                          <input
+                            type="text"
+                            placeholder="Search categories..."
+                            value={categorySearch}
+                            onChange={(e) => setCategorySearch(e.target.value)}
+                            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
                           />
-                          <span className="flex-1 truncate text-xs text-gray-600">{url}</span>
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveImageUrl(index)}
-                            className="rounded bg-red-600 px-2 py-1 text-xs text-white hover:bg-red-700"
+                          <select
+                            value={formData.category_id}
+                            onChange={(e) => setFormData({ ...formData, category_id: e.target.value })}
+                            className="mt-2 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                            aria-label="Product Category"
                           >
-                            ✕
-                          </button>
+                            <option value="">Select category</option>
+                            {filteredCategories.map((cat) => (
+                              <option key={cat.id} value={cat.id}>
+                                {cat.icon} {cat.name}
+                              </option>
+                            ))}
+                          </select>
+                          <p className="mt-1 text-xs text-gray-500">
+                            Showing {filteredCategories.length} categories
+                          </p>
                         </div>
-                      ))}
-                      <p className="text-xs text-green-600">
-                        {formData.image_urls.length} image(s) added
-                      </p>
+                      </div>
+
+                      <div className="flex justify-end gap-3 pt-2">
+                        <button
+                          type="button"
+                          onClick={() => setFormStep(2)}
+                          className="w-full rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-green-700 md:w-auto"
+                        >
+                          Next
+                        </button>
+                      </div>
                     </div>
                   )}
-                </div>
 
-                <TextAreaField
-                  label="Description"
-                  value={formData.description}
-                  onChange={(value) => setFormData({ ...formData, description: value })}
-                  rows={3}
-                  placeholder="Detailed product description..."
-                />
+                  {/* Step 2: Details */}
+                  {formStep === 2 && (
+                    <div className="space-y-4">
+                      <div className="grid gap-4 md:grid-cols-2">
+                        <InputField
+                          label="Contact Phone"
+                          value={formData.contact_phone}
+                          onChange={(value) => setFormData({ ...formData, contact_phone: value })}
+                          placeholder="e.g. +233 xxx xxx xxx"
+                        />
+                        <SelectField
+                          label="Condition"
+                          value={formData.condition}
+                          onChange={(value) => setFormData({ ...formData, condition: value })}
+                          options={[
+                            { value: 'New', label: 'New' },
+                            { value: 'Like New', label: 'Like New' },
+                            { value: 'Good', label: 'Good' },
+                            { value: 'Fair', label: 'Fair' },
+                            { value: 'Needs Repair', label: 'Needs Repair' },
+                          ]}
+                          placeholder="Select condition"
+                        />
+                        <SelectField
+                          label="Warranty"
+                          value={formData.warranty}
+                          onChange={(value) => setFormData({ ...formData, warranty: value })}
+                          options={[
+                            { value: 'No', label: 'No Warranty' },
+                            { value: 'Yes', label: 'Has Warranty' },
+                          ]}
+                          placeholder="Select warranty"
+                        />
+                        {formData.warranty === 'Yes' && (
+                          <InputField
+                            label="Warranty Period"
+                            value={formData.warranty_period}
+                            onChange={(value) => setFormData({ ...formData, warranty_period: value })}
+                            placeholder="e.g. 1 year, 6 months"
+                          />
+                        )}
+                      </div>
 
-                <TextAreaField
-                  label="Features / Specifications"
-                  value={formData.features}
-                  onChange={(value) => setFormData({ ...formData, features: value })}
-                  rows={3}
-                  placeholder="e.g. - High quality\n- Fresh produce\n- Pesticide free"
-                />
+                      <div className="flex justify-between gap-3 pt-2">
+                        <button
+                          type="button"
+                          onClick={() => setFormStep(1)}
+                          className="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 md:w-auto"
+                        >
+                          Back
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setFormStep(3)}
+                          className="w-full rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-green-700 md:w-auto"
+                        >
+                          Next
+                        </button>
+                      </div>
+                    </div>
+                  )}
 
-                <div className="flex justify-between gap-3 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setFormStep(2)}
-                    className="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 md:w-auto"
-                  >
-                    Back
-                  </button>
-                  <button
-                    type="submit"
-                    className="w-full rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-green-700 md:w-auto"
-                  >
-                    {formMode === 'edit' ? 'Save changes' : 'Create Product'}
-                  </button>
-                </div>
-              </div>
-            )}
+                  {/* Step 3: Media & description */}
+                  {formStep === 3 && (
+                    <div className="space-y-4">
+                      <div>
+                        <label className="mb-1 block text-sm font-medium text-gray-700">Product Images</label>
+
+                        {/* Use a safe check for open */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (typeof open === 'function') {
+                              open()
+                            } else {
+                              alert('Upload widget is still loading. Please try again in a moment.')
+                            }
+                          }}
+                          className="w-full rounded-lg bg-blue-600 px-4 py-3 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700 flex items-center justify-center gap-2"
+                        >
+                          <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                          </svg>
+                          Upload Images from Cloudinary
+                        </button>
+
+                        <p className="mt-2 text-xs text-gray-500">
+                          First image will be used as the main product image. You can upload multiple images.
+                        </p>
+
+                        {formData.image_urls.length > 0 && (
+                          <div className="mt-3 space-y-2">
+                            {formData.image_urls.map((url, index) => (
+                              <div
+                                key={index}
+                                className="flex items-center gap-2 rounded border border-gray-200 bg-gray-50 p-2"
+                              >
+                                <img
+                                  src={url}
+                                  alt={`Preview ${index + 1}`}
+                                  className="h-10 w-10 rounded object-cover"
+                                  onError={(e) => {
+                                    (e.target as HTMLImageElement).src = 'https://via.placeholder.com/40?text=?'
+                                  }}
+                                />
+                                <span className="flex-1 truncate text-xs text-gray-600">{url}</span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveImageUrl(index)}
+                                  className="rounded bg-red-600 px-2 py-1 text-xs text-white hover:bg-red-700"
+                                >
+                                  ✕
+                                </button>
+                              </div>
+                            ))}
+                            <p className="text-xs text-green-600">
+                              {formData.image_urls.length} image(s) added
+                            </p>
+                          </div>
+                        )}
+                      </div>
+
+                      <TextAreaField
+                        label="Description"
+                        value={formData.description}
+                        onChange={(value) => setFormData({ ...formData, description: value })}
+                        rows={3}
+                        placeholder="Detailed product description..."
+                      />
+
+                      <TextAreaField
+                        label="Features / Specifications"
+                        value={formData.features}
+                        onChange={(value) => setFormData({ ...formData, features: value })}
+                        rows={3}
+                        placeholder="e.g. - High quality\n- Fresh produce\n- Pesticide free"
+                      />
+
+                      <div className="flex justify-between gap-3 pt-2">
+                        <button
+                          type="button"
+                          onClick={() => setFormStep(2)}
+                          className="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 md:w-auto"
+                        >
+                          Back
+                        </button>
+                        <button
+                          type="submit"
+                          className="w-full rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-green-700 md:w-auto"
+                        >
+                          {formMode === 'edit' ? 'Save changes' : 'Create Product'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </CldUploadWidget>
           </form>
         </div>
       )}
@@ -744,10 +872,21 @@ function ProductsTab({ admin }: { admin: Admin | null }) {
   )
 }
 
-function UpdatesTab() {
+function UpdatesTab({ admin }: { admin: Admin | null }) {
+  const isAdmin = admin?.role === 'admin'
+
+  if (!admin) {
+    return (
+      <div className="py-8 text-center text-gray-600">
+        Loading permissions...
+      </div>
+    )
+  }
+
   const [whatsappUrl, setWhatsappUrl] = useState('')
   const [tiktokUrl, setTiktokUrl] = useState('')
   const [facebookUrl, setFacebookUrl] = useState('')
+  const [instagramUrl, setInstagramUrl] = useState('')
   const [settingsLoading, setSettingsLoading] = useState(true)
   const [settingsSaving, setSettingsSaving] = useState(false)
 
@@ -770,20 +909,35 @@ function UpdatesTab() {
   }, [])
 
   const fetchSettings = async () => {
-    const { data, error } = await supabase.from('site_settings').select('*')
+    if (isAdmin) {
+      const { data, error } = await supabase.from('site_settings').select('*')
 
-    if (!error && data) {
-      data.forEach((row: any) => {
-        if (row.key === 'whatsapp_channel_url') {
-          setWhatsappUrl(row.value || '')
-        }
-        if (row.key === 'tiktok_url') {
-          setTiktokUrl(row.value || '')
-        }
-        if (row.key === 'facebook_url') {
-          setFacebookUrl(row.value || '')
-        }
-      })
+      if (!error && data) {
+        data.forEach((row: any) => {
+          if (row.key === 'whatsapp_channel_url') {
+            setWhatsappUrl(row.value || '')
+          }
+          if (row.key === 'tiktok_url') {
+            setTiktokUrl(row.value || '')
+          }
+          if (row.key === 'facebook_url') {
+            setFacebookUrl(row.value || '')
+          }
+        })
+      }
+    } else if (admin?.id) {
+      const { data, error } = await supabase
+        .from('vendors')
+        .select('whatsapp_url, facebook_url, tiktok_url, instagram_url')
+        .eq('id', admin.id)
+        .single()
+
+      if (!error && data) {
+        setWhatsappUrl(data.whatsapp_url || '')
+        setFacebookUrl(data.facebook_url || '')
+        setTiktokUrl(data.tiktok_url || '')
+        setInstagramUrl(data.instagram_url || '')
+      }
     }
     setSettingsLoading(false)
   }
@@ -804,17 +958,35 @@ function UpdatesTab() {
     e.preventDefault()
     setSettingsSaving(true)
 
-    const rows: any[] = []
-    rows.push({ key: 'whatsapp_channel_url', value: whatsappUrl })
-    rows.push({ key: 'tiktok_url', value: tiktokUrl })
-    rows.push({ key: 'facebook_url', value: facebookUrl })
+    if (isAdmin) {
+      const rows: any[] = []
+      rows.push({ key: 'whatsapp_channel_url', value: whatsappUrl })
+      rows.push({ key: 'tiktok_url', value: tiktokUrl })
+      rows.push({ key: 'facebook_url', value: facebookUrl })
 
-    const { error } = await supabase
-      .from('site_settings')
-      .upsert(rows, { onConflict: 'key' })
+      const { error } = await supabase
+        .from('site_settings')
+        .upsert(rows, { onConflict: 'key' })
 
-    if (error) {
-      alert('Error saving social links: ' + error.message)
+      if (error) {
+        alert('Error saving platform links: ' + error.message)
+      }
+    } else if (admin?.id) {
+      const { error } = await supabase
+        .from('vendors')
+        .update({
+          whatsapp_url: whatsappUrl,
+          facebook_url: facebookUrl,
+          tiktok_url: tiktokUrl,
+          instagram_url: instagramUrl,
+        })
+        .eq('id', admin.id)
+
+      if (error) {
+        alert('Error saving store links: ' + error.message)
+      } else {
+        alert('Store social links updated successfully!')
+      }
     }
 
     setSettingsSaving(false)
@@ -940,27 +1112,43 @@ function UpdatesTab() {
         <div>
           <h2 className="text-lg font-semibold text-gray-900">Updates & Social</h2>
           <p className="text-sm text-gray-600">
-            Manage WhatsApp, TikTok, Facebook links and publish simple updates for farmers.
+            {isAdmin
+              ? 'Manage platform-wide social channels and publish updates for all farmers.'
+              : 'Manage your personal store social links to help farmers connect with you directly.'}
           </p>
         </div>
       </div>
 
-      <div className="space-y-4 lg:grid lg:grid-cols-12 lg:gap-6 lg:space-y-0">
-        {/* Left column: Social links */}
-        <div className="lg:col-span-4 xl:col-span-3">
+      {!isAdmin && (
+        <div className="rounded-lg bg-green-50 p-4 border border-green-100 mb-6">
+          <p className="text-sm text-green-800">
+            👋 <strong>Personalize your store:</strong> Add your social links below. These will help farmers find your profile and contact you directly.
+          </p>
+        </div>
+      )}
+
+      <div className={`space-y-4 ${isAdmin ? 'lg:grid lg:grid-cols-12 lg:gap-6 lg:space-y-0' : ''}`}>
+        {/* Social links column */}
+        <div className={isAdmin ? 'lg:col-span-4 xl:col-span-3' : 'max-w-2xl'}>
           <div className="rounded-lg bg-white p-4 shadow-sm md:p-6 lg:sticky lg:top-24">
-            <h3 className="mb-3 text-sm font-semibold text-gray-900">Social channels</h3>
+            <h3 className="mb-3 text-sm font-semibold text-gray-900">
+              {isAdmin ? 'Platform social channels' : 'Your store links'}
+            </h3>
             <p className="mb-4 text-xs text-gray-600">
-              These links appear on the public shop page so farmers can join your update channels.
+              {isAdmin
+                ? 'These links appear as the main platform channels on the shop page.'
+                : 'These links will be shown on your products so buyers can follow you.'}
             </p>
             <form onSubmit={handleSaveSettings} className="space-y-3">
               <div>
-                <label className="mb-1 block text-xs font-medium text-gray-700">WhatsApp channel link</label>
+                <label className="mb-1 block text-xs font-medium text-gray-700">
+                  {isAdmin ? 'WhatsApp channel link' : 'WhatsApp link (Personal/Business)'}
+                </label>
                 <input
                   type="url"
                   value={whatsappUrl}
                   onChange={(e) => setWhatsappUrl(e.target.value)}
-                  placeholder="https://chat.whatsapp.com/... or https://whatsapp.com/channel/..."
+                  placeholder={isAdmin ? "https://whatsapp.com/channel/..." : "https://wa.me/233..."}
                   className="w-full rounded-lg border border-gray-300 px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-green-500"
                 />
               </div>
@@ -975,15 +1163,27 @@ function UpdatesTab() {
                 />
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-gray-700">Facebook page link</label>
+                <label className="mb-1 block text-xs font-medium text-gray-700">Facebook link</label>
                 <input
                   type="url"
                   value={facebookUrl}
                   onChange={(e) => setFacebookUrl(e.target.value)}
-                  placeholder="https://facebook.com/your-page"
+                  placeholder="https://facebook.com/your-profile"
                   className="w-full rounded-lg border border-gray-300 px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-green-500"
                 />
               </div>
+              {!isAdmin && (
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-gray-700">Instagram link</label>
+                  <input
+                    type="url"
+                    value={instagramUrl}
+                    onChange={(e) => setInstagramUrl(e.target.value)}
+                    placeholder="https://instagram.com/your-profile"
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-green-500"
+                  />
+                </div>
+              )}
               <div className="pt-1">
                 <button
                   type="submit"
@@ -997,158 +1197,122 @@ function UpdatesTab() {
           </div>
         </div>
 
-        {/* Right column: Blog creation + list */}
-        <div className="space-y-4 lg:col-span-8 xl:col-span-9">
-          <div className="rounded-lg bg-white p-4 shadow-sm md:p-6">
-            <h3 className="mb-3 text-sm font-semibold text-gray-900">
-              {editingPostId ? 'Edit update' : 'New update'}
-            </h3>
-            <p className="mb-4 text-xs text-gray-600">
-              Use this for short market updates, platform news, or tips. You can use simple Markdown for
-              bullets, links, and extra images.
-            </p>
-            <form onSubmit={handleCreatePost} className="space-y-3">
-              <div>
-                <label className="mb-1 block text-xs font-medium text-gray-700">Title *</label>
-                <input
-                  type="text"
-                  value={postForm.title}
-                  onChange={(e) => setPostForm({ ...postForm, title: e.target.value })}
-                  placeholder="e.g. Maize prices this week"
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-green-500"
-                  required
-                />
-              </div>
-              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+        {isAdmin && (
+          <div className="space-y-4 lg:col-span-8 xl:col-span-9">
+            <div className="rounded-lg bg-white p-4 shadow-sm md:p-6">
+              <h3 className="mb-3 text-sm font-semibold text-gray-900">
+                {editingPostId ? 'Edit update' : 'New update'}
+              </h3>
+              <p className="mb-4 text-xs text-gray-600">
+                Use this for short market updates, platform news, or tips. You can use simple Markdown for
+                bullets, links, and extra images.
+              </p>
+              <form onSubmit={handleCreatePost} className="space-y-3">
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-gray-700">Slug</label>
+                  <label className="mb-1 block text-xs font-medium text-gray-700">Title *</label>
                   <input
                     type="text"
-                    value={postForm.slug}
-                    onChange={(e) => setPostForm({ ...postForm, slug: e.target.value })}
-                    placeholder="auto-generated if left blank"
+                    value={postForm.title}
+                    onChange={(e) => setPostForm({ ...postForm, title: e.target.value })}
+                    placeholder="e.g. Maize prices this week"
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-green-500"
+                    required
+                  />
+                </div>
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-gray-700">Slug</label>
+                    <input
+                      type="text"
+                      value={postForm.slug}
+                      onChange={(e) => setPostForm({ ...postForm, slug: e.target.value })}
+                      placeholder="auto-generated if left blank"
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-green-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-gray-700">Image URL</label>
+                    <input
+                      type="url"
+                      value={postForm.image_url}
+                      onChange={(e) => setPostForm({ ...postForm, image_url: e.target.value })}
+                      placeholder="https://example.com/hero-image.jpg"
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-green-500"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-gray-700">Video URL</label>
+                  <input
+                    type="url"
+                    value={postForm.video_url}
+                    onChange={(e) => setPostForm({ ...postForm, video_url: e.target.value })}
+                    placeholder="YouTube link or .mp4/.webm video URL (optional)"
                     className="w-full rounded-lg border border-gray-300 px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-green-500"
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-gray-700">Image URL</label>
-                  <input
-                    type="url"
-                    value={postForm.image_url}
-                    onChange={(e) => setPostForm({ ...postForm, image_url: e.target.value })}
-                    placeholder="https://example.com/hero-image.jpg"
+                  <label className="mb-1 block text-xs font-medium text-gray-700">Short summary</label>
+                  <textarea
+                    value={postForm.summary}
+                    onChange={(e) => setPostForm({ ...postForm, summary: e.target.value })}
+                    rows={2}
+                    placeholder="One or two lines explaining the update."
                     className="w-full rounded-lg border border-gray-300 px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-green-500"
                   />
                 </div>
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-medium text-gray-700">Video URL</label>
-                <input
-                  type="url"
-                  value={postForm.video_url}
-                  onChange={(e) => setPostForm({ ...postForm, video_url: e.target.value })}
-                  placeholder="YouTube link or .mp4/.webm video URL (optional)"
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-green-500"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-medium text-gray-700">Short summary</label>
-                <textarea
-                  value={postForm.summary}
-                  onChange={(e) => setPostForm({ ...postForm, summary: e.target.value })}
-                  rows={2}
-                  placeholder="One or two lines explaining the update."
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-green-500"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-medium text-gray-700">Full content</label>
-                <textarea
-                  value={postForm.content}
-                  onChange={(e) => setPostForm({ ...postForm, content: e.target.value })}
-                  rows={4}
-                  placeholder={
-                    'Use paragraphs, lists (- bullet), and Markdown links like [View product](https://agribuyx.com/products/123).'
-                  }
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-green-500"
-                />
-              </div>
-              <div className="pt-1">
-                <button
-                  type="submit"
-                  disabled={postSaving}
-                  className="w-full rounded-lg bg-green-600 px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-green-700 disabled:cursor-not-allowed disabled:bg-green-400"
-                >
-                  {postSaving
-                    ? editingPostId
-                      ? 'Saving...'
-                      : 'Publishing...'
-                    : editingPostId
-                      ? 'Save changes'
-                      : 'Publish update'}
-                </button>
-              </div>
-            </form>
-          </div>
-
-          {/* Existing posts */}
-          <div className="rounded-lg bg-white p-4 shadow-sm md:p-6">
-            <div className="mb-3 flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-gray-900">Recent updates</h3>
-              {postsLoading && <span className="text-xs text-gray-500">Loading...</span>}
-            </div>
-            {postsLoading ? (
-              <div className="py-6 text-center text-sm text-gray-600">Loading posts...</div>
-            ) : posts.length === 0 ? (
-              <div className="py-6 text-center text-sm text-gray-600">
-                No updates have been published yet.
-              </div>
-            ) : (
-              <div className="divide-y text-sm">
-                {posts.map((post: any) => (
-                  <div
-                    key={post.id}
-                    className="flex flex-col gap-2 py-3 md:flex-row md:items-center md:justify-between"
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-gray-700">Full content</label>
+                  <textarea
+                    value={postForm.content}
+                    onChange={(e) => setPostForm({ ...postForm, content: e.target.value })}
+                    rows={4}
+                    placeholder={'Use paragraphs, lists (- bullet), and Markdown links like [View product](https://agribuyx.com/products/123).'}
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-green-500"
+                  />
+                </div>
+                <div className="pt-1">
+                  <button
+                    type="submit"
+                    disabled={postSaving}
+                    className="w-full rounded-lg bg-green-600 px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-green-700 disabled:cursor-not-allowed disabled:bg-green-400"
                   >
-                    <div>
-                      <p className="text-xs text-gray-500">
-                        {post.created_at ? new Date(post.created_at).toLocaleDateString() : ''}
-                      </p>
-                      <p className="font-semibold text-gray-900 line-clamp-2">{post.title}</p>
-                      {post.summary && (
-                        <p className="text-xs text-gray-600 line-clamp-2">{post.summary}</p>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2 pt-1 md:pt-0">
-                      <a
-                        href={`/blog/${post.slug}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
-                      >
-                        View
-                      </a>
-                      <button
-                        type="button"
-                        onClick={() => handleEditPost(post)}
-                        className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleDeletePost(post.id)}
-                        className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-700"
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                    {postSaving ? (editingPostId ? 'Saving...' : 'Publishing...') : (editingPostId ? 'Save changes' : 'Publish update')}
+                  </button>
+                </div>
+              </form>
+            </div>
+
+            <div className="rounded-lg bg-white p-4 shadow-sm md:p-6">
+              <div className="mb-3 flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-gray-900">Recent updates</h3>
+                {postsLoading && <span className="text-xs text-gray-500">Loading...</span>}
               </div>
-            )}
+              {postsLoading ? (
+                <div className="py-6 text-center text-sm text-gray-600">Loading posts...</div>
+              ) : posts.length === 0 ? (
+                <div className="py-6 text-center text-sm text-gray-600">No updates have been published yet.</div>
+              ) : (
+                <div className="divide-y text-sm">
+                  {posts.map((post: any) => (
+                    <div key={post.id} className="flex flex-col gap-2 py-3 md:flex-row md:items-center md:justify-between">
+                      <div>
+                        <p className="text-xs text-gray-500">{post.created_at ? new Date(post.created_at).toLocaleDateString() : ''}</p>
+                        <p className="font-semibold text-gray-900 line-clamp-2">{post.title}</p>
+                        {post.summary && <p className="text-xs text-gray-600 line-clamp-2">{post.summary}</p>}
+                      </div>
+                      <div className="flex items-center gap-2 pt-1 md:pt-0">
+                        <a href={`/blog/${post.slug}`} target="_blank" rel="noopener noreferrer" className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50">View</a>
+                        <button type="button" onClick={() => handleEditPost(post)} className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50">Edit</button>
+                        <button type="button" onClick={() => handleDeletePost(post.id)} className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-700">Delete</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </section>
   )

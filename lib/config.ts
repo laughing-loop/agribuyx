@@ -33,6 +33,7 @@ function getEnvVar(key: string, defaultValue?: string, isClientSide = false): st
 export const supabaseConfig = {
     url: getEnvVar('NEXT_PUBLIC_SUPABASE_URL', 'https://sfehpthgrdehsrbbwhzq.supabase.co', true),
     anonKey: getEnvVar('NEXT_PUBLIC_SUPABASE_ANON_KEY', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNmZWhwdGhncmRlaHNyYmJ3aHpxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM0MzU1OTYsImV4cCI6MjA3OTAxMTU5Nn0.xIvYfNrzvACfmcLwyJAcwEpyUR6GdYgL_ZTyc24cgh4', true),
+    serviceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY, // Server-side only, required for admin invites
 } as const
 
 // Cloudinary Configuration
@@ -59,7 +60,7 @@ export const emailConfig = {
 // App Configuration
 export const appConfig = {
     name: 'AgriBuyX',
-    url: process.env.NEXT_PUBLIC_APP_URL || 'https://agribuyx.com',
+    url: process.env.NEXT_PUBLIC_APP_URL || (process.env.NODE_ENV === 'development' ? 'http://localhost:3000' : 'https://agribuyx.com'),
     environment: process.env.NODE_ENV || 'development',
     isDevelopment: process.env.NODE_ENV === 'development',
     isProduction: process.env.NODE_ENV === 'production',
