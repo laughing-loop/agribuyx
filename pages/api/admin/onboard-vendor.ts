@@ -1,6 +1,6 @@
-import { createClient } from '@supabase/supabase-js'
 import type { NextApiRequest, NextApiResponse } from 'next'
-import { config } from '@/lib/config'
+import { createSupabaseAdminClient } from '@/lib/supabase-admin'
+import { getApiUser } from '@/lib/supabase-api'
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== 'POST') {
@@ -13,23 +13,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(400).json({ error: 'Missing required fields' })
     }
 
-    if (!config.supabase.serviceRoleKey) {
-        return res.status(500).json({ error: 'Server configuration error' })
-    }
-
     try {
-        const supabaseAdmin = createClient(
-            config.supabase.url,
-            config.supabase.serviceRoleKey,
-            { auth: { autoRefreshToken: false, persistSession: false } }
-        )
+        const user = await getApiUser(req, res)
+        if (!user?.email || user.id !== userId || user.email.toLowerCase() !== String(email).toLowerCase()) {
+            return res.status(403).json({ error: 'You can only onboard your own signed-in account' })
+        }
+
+        const supabaseAdmin = createSupabaseAdminClient()
 
         // 1. Find the invite
         const { data: inviteData, error: inviteError } = await supabaseAdmin
             .from('vendor_invites')
             .select('*')
-            .eq('email', email)
-            .single()
+            .eq('email', user.email)
+            .maybeSingle()
 
         if (inviteError || !inviteData) {
             return res.status(200).json({ message: 'User already processed or no invite found' })
@@ -38,11 +35,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         // 2. Create the vendor record
         const { error: dbError } = await supabaseAdmin
             .from('vendors')
-            .insert([{
+            .upsert([{
                 id: userId,
-                email: email,
+                email: user.email,
                 business_name: fullName || email.split('@')[0],
-            }])
+            }], { onConflict: 'email' })
 
         if (dbError) throw dbError
 

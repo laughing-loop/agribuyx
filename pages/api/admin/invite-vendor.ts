@@ -1,45 +1,42 @@
-import { createClient } from '@supabase/supabase-js'
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { config } from '@/lib/config'
+import { createSupabaseAdminClient, isSuperAdminEmail } from '@/lib/supabase-admin'
+import { getApiUser } from '@/lib/supabase-api'
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Method not allowed' })
     }
 
-    // Verify we have the service role key
-    if (!config.supabase.serviceRoleKey) {
-        console.error('Missing SUPABASE_SERVICE_ROLE_KEY')
-        return res.status(500).json({
-            error: 'Server configuration error: Missing service role key. Please ask the administrator to configure it.'
-        })
-    }
-
     const { email } = req.body
 
-    if (!email) {
+    if (!email || typeof email !== 'string') {
         return res.status(400).json({ error: 'Email is required' })
     }
 
     try {
-        // Initialize Supabase Admin Client
-        const supabaseAdmin = createClient(
-            config.supabase.url,
-            config.supabase.serviceRoleKey,
-            {
-                auth: {
-                    autoRefreshToken: false,
-                    persistSession: false
-                }
-            }
-        )
+        const user = await getApiUser(req, res)
+        if (!user?.email) {
+            return res.status(401).json({ error: 'Authentication required' })
+        }
+
+        const supabaseAdmin = createSupabaseAdminClient()
+        const { data: adminRow } = await supabaseAdmin
+            .from('admins')
+            .select('id')
+            .eq('email', user.email)
+            .maybeSingle()
+
+        if (!adminRow && !isSuperAdminEmail(user.email)) {
+            return res.status(403).json({ error: 'Only administrators can invite vendors' })
+        }
 
         // 1. Create the database record FIRST
         // This ensures the user shows up in the UI even if the email fails
         const { error: dbError } = await supabaseAdmin
             .from('vendor_invites')
             .insert([{
-                email,
+                email: email.trim().toLowerCase(),
                 token: Math.random().toString(36).substring(7),
                 expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
             }])
@@ -50,7 +47,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
 
         // 2. Send Auth Invite SECOND
-        const { data, error } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
+        const { data, error } = await supabaseAdmin.auth.admin.inviteUserByEmail(email.trim().toLowerCase(), {
             redirectTo: `${config.app.url}/admin/update-password`
         })
 

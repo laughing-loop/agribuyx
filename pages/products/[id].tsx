@@ -56,6 +56,7 @@ export default function ProductDetail() {
   const [vendor, setVendor] = useState<Vendor | null>(null)
   const [loading, setLoading] = useState(true)
   const [images, setImages] = useState<ProductImage[]>([])
+  const [selectedImageUrl, setSelectedImageUrl] = useState<string>('')
   const [relatedProducts, setRelatedProducts] = useState<Product[]>([])
   const [relatedVisibleCount, setRelatedVisibleCount] = useState<number>(4)
   const [isInWishlist, setIsInWishlist] = useState(false)
@@ -110,7 +111,9 @@ export default function ProductDetail() {
         .select('*')
         .eq('product_id', productData.id)
 
-      setImages(imageData || [])
+      const imageRows = imageData || []
+      setImages(imageRows)
+      setSelectedImageUrl(imageRows[0]?.image_url || productData.image_url || '')
 
       if (productData.created_by) {
         const { data: vendorData } = await supabase
@@ -233,6 +236,13 @@ export default function ProductDetail() {
     )
   }
 
+  const galleryImages =
+    images.length > 0
+      ? images
+      : product.image_url
+        ? [{ id: product.id, product_id: product.id, image_url: product.image_url }]
+        : []
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Navigation */}
@@ -294,34 +304,38 @@ export default function ProductDetail() {
           {/* LEFT COLUMN: Image gallery */}
           <div className="md:col-span-4 lg:col-span-5">
             <div className="overflow-hidden rounded-lg bg-white shadow">
-              {images.length > 0 ? (
+              {galleryImages.length > 0 ? (
                 <>
                   <img
-                    src={getWatermarkedImageUrl(images[0].image_url)}
+                    src={getWatermarkedImageUrl(selectedImageUrl || galleryImages[0].image_url)}
                     alt={product.title}
                     className="w-full h-80 md:h-96 object-cover"
                   />
-                  {images.length > 1 && (
+                  {galleryImages.length > 1 && (
                     <div className="border-t border-gray-100 bg-gray-50 px-3 py-3">
                       <div className="grid grid-cols-4 gap-2">
-                        {images.map((img) => (
-                          <img
+                        {galleryImages.map((img) => (
+                          <button
                             key={img.id}
-                            src={getWatermarkedImageUrl(img.image_url)}
-                            alt={product.title}
-                            className="h-16 w-full cursor-pointer rounded object-cover"
-                          />
+                            type="button"
+                            onClick={() => setSelectedImageUrl(img.image_url)}
+                            className={`overflow-hidden rounded border-2 ${selectedImageUrl === img.image_url
+                              ? 'border-green-600'
+                              : 'border-transparent'
+                              }`}
+                            aria-label={`Show image for ${product.title}`}
+                          >
+                            <img
+                              src={getWatermarkedImageUrl(img.image_url)}
+                              alt={product.title}
+                              className="h-16 w-full object-cover"
+                            />
+                          </button>
                         ))}
                       </div>
                     </div>
                   )}
                 </>
-              ) : product.image_url ? (
-                <img
-                  src={getWatermarkedImageUrl(product.image_url)}
-                  alt={product.title}
-                  className="w-full h-80 md:h-96 object-cover"
-                />
               ) : (
                 <div className="w-full h-80 md:h-96 bg-gray-200 flex items-center justify-center">
                   <span className="text-gray-400">No image available</span>
@@ -568,7 +582,7 @@ export default function ProductDetail() {
 
       {/* Footer */}
       <footer className="bg-gray-900 text-white text-center py-8 mt-20">
-        <p>&copy; 2025 AgriBuyX. All rights reserved. | agribuyx.com</p>
+        <p>&copy; 2026 AgriBuyX. All rights reserved. | agribuyx.com</p>
       </footer>
     </div>
   )

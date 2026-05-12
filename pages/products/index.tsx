@@ -73,8 +73,11 @@ export default function Products() {
 
   useEffect(() => {
     fetchProducts()
+  }, [selectedCategory, categories])
+
+  useEffect(() => {
     fetchCategories()
-  }, [selectedCategory])
+  }, [])
 
   useEffect(() => {
     fetchBlogPosts()
@@ -102,13 +105,17 @@ export default function Products() {
   }, [selectedCategory, searchQuery, selectedLocation])
 
   const fetchProducts = async () => {
+    setLoading(true)
     let query = supabase
       .from('products')
       .select('*')
       .order('created_at', { ascending: false })
 
     if (selectedCategory) {
-      query = query.eq('category_id', selectedCategory)
+      const childCategoryIds = categories
+        .filter((cat) => cat.parent_id === selectedCategory)
+        .map((cat) => cat.id)
+      query = query.in('category_id', [selectedCategory, ...childCategoryIds])
     }
 
     const { data, error } = await query
@@ -120,6 +127,9 @@ export default function Products() {
         new Set(items.map((product) => product.location).filter(Boolean))
       )
       setLocations(uniqueLocations)
+    } else {
+      setProducts([])
+      setLocations([])
     }
     setLoading(false)
   }
@@ -328,10 +338,10 @@ export default function Products() {
 
       <div className="bg-gradient-to-r from-green-600 to-blue-600 text-white py-10 px-4">
         <div className="max-w-7xl mx-auto text-center md:text-left">
-          <h1 className="text-3xl md:text-4xl font-bold mb-3">Fresh Agricultural Products</h1>
-          <p className="text-sm md:text-base text-green-50">
-            Discover the finest produce and agri inputs from trusted farmers and vendors.
-          </p>
+            <h1 className="text-3xl md:text-4xl font-bold mb-3">Fresh Agricultural Products</h1>
+            <p className="text-sm md:text-base text-green-50">
+            Find seeds, fertilizers, crop protection, livestock supplies, and farm equipment from trusted vendors.
+            </p>
         </div>
       </div>
 
@@ -785,7 +795,7 @@ export default function Products() {
 
       {/* Footer */}
       <footer className="bg-gray-900 text-white text-center py-8 mt-20">
-        <p className="mb-2">&copy; 2025 AgriBuyX. All rights reserved. | agribuyx.com</p>
+        <p className="mb-2">&copy; 2026 AgriBuyX. All rights reserved. | agribuyx.com</p>
         <Link href="/admin/login" className="text-xs text-gray-500 hover:text-gray-300 transition-colors uppercase tracking-wider">
           Vendor Office
         </Link>

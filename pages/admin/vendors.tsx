@@ -5,8 +5,9 @@ import Image from 'next/image'
 interface Vendor {
     id: string
     email: string
+    business_name?: string | null
+    is_verified?: boolean | null
     created_at: string
-    last_sign_in_at: string
 }
 
 export default function VendorsPage() {
@@ -21,23 +22,16 @@ export default function VendorsPage() {
     }, [])
 
     const fetchVendors = async () => {
-        // In a real scenario, we might query a public.vendors table or use an admin API 
-        // Since we can't list all users from client-side easily without a public table,
-        // we'll assume for now we list 'admins' if we had such table, or just show the current user for demo
-        // Ideally, we would have a 'profiles' table that links to auth.users.
+        const { data, error } = await supabase
+            .from('vendors')
+            .select('id, email, business_name, is_verified, created_at')
+            .order('created_at', { ascending: false })
 
-        // For this demo, let's try to fetch from an imaginary 'vendors' or 'profiles' table
-        // If it doesn't exist, we'll just show an empty list or the current user.
-
-        // Fallback to showing just yourself if table doesn't exist
-        const { data: { user } } = await supabase.auth.getUser()
-        if (user && user.email) {
-            setVendors([{
-                id: user.id,
-                email: user.email,
-                created_at: user.created_at,
-                last_sign_in_at: user.last_sign_in_at || new Date().toISOString()
-            }])
+        if (error) {
+            setMessage({ type: 'error', text: `Could not load vendors: ${error.message}` })
+            setVendors([])
+        } else {
+            setVendors((data || []) as Vendor[])
         }
         setLoading(false)
     }
@@ -62,6 +56,7 @@ export default function VendorsPage() {
 
             setMessage({ type: 'success', text: `Invitation sent to ${inviteEmail}!` })
             setInviteEmail('')
+            fetchVendors()
         } catch (err: any) {
             setMessage({ type: 'error', text: err.message })
         } finally {
@@ -119,8 +114,8 @@ export default function VendorsPage() {
             <div className="bg-white shadow sm:rounded-lg">
                 <div className="px-4 py-5 sm:px-6">
                     <h3 className="text-lg font-medium leading-6 text-gray-900">Active Vendors</h3>
-                    <p className="mt-1 text-max-2xl text-sm text-gray-500">
-                        List of currently registered vendors and administrators.
+                        <p className="mt-1 max-w-2xl text-sm text-gray-500">
+                        Registered vendor accounts that can manage marketplace listings.
                     </p>
                 </div>
                 <div className="border-t border-gray-200">
@@ -141,12 +136,15 @@ export default function VendorsPage() {
                                             </div>
                                             <div className="ml-4">
                                                 <p className="truncate text-sm font-medium text-green-600">{vendor.email}</p>
+                                                {vendor.business_name && (
+                                                    <p className="text-xs text-gray-600">{vendor.business_name}</p>
+                                                )}
                                                 <p className="text-xs text-gray-500">Joined: {new Date(vendor.created_at).toLocaleDateString()}</p>
                                             </div>
                                         </div>
                                         <div>
                                             <span className="inline-flex rounded-full bg-green-100 px-2 text-xs font-semibold leading-5 text-green-800">
-                                                Active
+                                                {vendor.is_verified === false ? 'Pending' : 'Active'}
                                             </span>
                                         </div>
                                     </div>

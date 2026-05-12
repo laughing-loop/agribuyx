@@ -1,9 +1,6 @@
-import { createClient } from '@supabase/supabase-js'
 import type { NextApiRequest, NextApiResponse } from 'next'
-import { config } from '@/lib/config'
-
-// Replicate the SUPER_ADMINS list from the frontend for security
-const SUPER_ADMINS = ['support@agribuyx.com', 'admin@agribuyx.com', 'jolydoh4@gmail.com']
+import { createSupabaseAdminClient, isSuperAdminEmail } from '@/lib/supabase-admin'
+import { getApiUser } from '@/lib/supabase-api'
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== 'POST') {
@@ -16,26 +13,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(400).json({ error: 'Missing required fields' })
     }
 
-    // Security check: Only allow syncing for recognized Super Admins if isAdmin is true
-    if (isAdmin) {
-        const isSuper = SUPER_ADMINS.includes(email) || email === process.env.NEXT_PUBLIC_ADMIN_EMAIL
-        if (!isSuper) {
-            return res.status(403).json({ error: 'Only recognized Super Admins can sync to the admin table.' })
-        }
-    }
-
-    if (!config.supabase.serviceRoleKey) {
-        return res.status(500).json({ error: 'Server configuration error: Service Role Key missing' })
-    }
-
     try {
-        const supabaseAdmin = createClient(
-            config.supabase.url,
-            config.supabase.serviceRoleKey,
-            { auth: { autoRefreshToken: false, persistSession: false } }
-        )
+        const user = await getApiUser(req, res)
+        if (!user?.email || user.id !== userId || user.email.toLowerCase() !== String(email).toLowerCase()) {
+            return res.status(403).json({ error: 'You can only synchronize your own signed-in profile' })
+        }
+
+        const supabaseAdmin = createSupabaseAdminClient()
 
         if (isAdmin) {
+            if (!isSuperAdminEmail(user.email)) {
+                return res.status(403).json({ error: 'Only recognized Super Admins can sync to the admin table.' })
+            }
+
             // Upsert into admins table
             const { error } = await supabaseAdmin
                 .from('admins')
@@ -47,6 +37,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 }, { onConflict: 'email' })
             if (error) throw error
         } else {
+            const { data: invite } = await supabaseAdmin
+                .from('vendor_invites')
+                .select('id')
+                .eq('email', user.email)
+                .maybeSingle()
+
+            if (!invite) {
+                return res.status(403).json({ error: 'This account has not been invited as a vendor.' })
+            }
+
             // Upsert into vendors table
             const { error } = await supabaseAdmin
                 .from('vendors')
