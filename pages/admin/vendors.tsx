@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
-import Image from 'next/image'
 
 interface Vendor {
     id: string
@@ -66,84 +65,102 @@ export default function VendorsPage() {
 
     return (
         <div className="space-y-6">
-            <div className="bg-white px-4 py-5 shadow sm:rounded-lg sm:p-6">
-                <div className="md:grid md:grid-cols-3 md:gap-6">
-                    <div className="md:col-span-1">
-                        <h3 className="text-lg font-medium leading-6 text-gray-900">Invite Vendor</h3>
-                        <p className="mt-1 text-sm text-gray-500">
-                            Send an email invitation to a new vendor. They will receive a link to set up their password.
+            <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm md:p-5">
+                <div className="grid gap-5 md:grid-cols-12 md:items-start">
+                    <div className="md:col-span-4">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
+                            Vendor access
+                        </p>
+                        <h3 className="mt-1 text-lg font-bold text-slate-950">Invite Vendor</h3>
+                        <p className="mt-2 text-sm leading-6 text-slate-600">
+                            Send an invite email. The vendor sets a password, then gets access to manage their listings.
                         </p>
                     </div>
-                    <div className="mt-5 md:col-span-2 md:mt-0">
-                        <form onSubmit={handleInvite} className="grid grid-cols-1 gap-6">
-                            <div>
-                                <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                                    Email Address
-                                </label>
-                                <div className="mt-1 flex rounded-md shadow-sm">
-                                    <input
-                                        type="email"
-                                        name="email"
-                                        id="email"
-                                        value={inviteEmail}
-                                        onChange={(e) => setInviteEmail(e.target.value)}
-                                        className="block w-full flex-1 rounded-none rounded-l-md border-gray-300 focus:border-green-500 focus:ring-green-500 sm:text-sm px-3 py-2 border"
-                                        placeholder="vendor@example.com"
-                                        required
-                                    />
-                                    <button
-                                        type="submit"
-                                        disabled={inviting}
-                                        className="inline-flex justify-center rounded-r-md border border-l-0 border-transparent bg-green-600 py-2 px-4 text-sm font-medium text-white shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50"
-                                    >
-                                        {inviting ? 'Sending...' : 'Send Invite'}
-                                    </button>
-                                </div>
-                            </div>
+                    <form onSubmit={handleInvite} className="md:col-span-8">
+                        <label htmlFor="email" className="mb-2 block text-sm font-semibold text-slate-700">
+                            Email Address
+                        </label>
+                        <div className="flex flex-col gap-2 sm:flex-row">
+                            <input
+                                type="email"
+                                name="email"
+                                id="email"
+                                value={inviteEmail}
+                                onChange={(e) => setInviteEmail(e.target.value)}
+                                className="h-11 flex-1 rounded-lg border border-slate-300 bg-slate-50 px-3 text-sm outline-none transition focus:border-emerald-500 focus:bg-white focus:ring-2 focus:ring-emerald-100"
+                                placeholder="vendor@example.com"
+                                required
+                            />
+                            <button
+                                type="submit"
+                                disabled={inviting}
+                                className="h-11 rounded-lg bg-emerald-600 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                                {inviting ? 'Sending...' : 'Send Invite'}
+                            </button>
+                        </div>
 
-                            {message && (
-                                <div className={`rounded-md p-4 ${message.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
-                                    <p className="text-sm">{message.text}</p>
-                                </div>
-                            )}
-                        </form>
-                    </div>
+                        {message && (
+                            <div className={`mt-3 rounded-lg border px-3 py-2 text-sm ${message.type === 'success'
+                                ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                                : 'border-red-200 bg-red-50 text-red-700'
+                                }`}>
+                                {message.text}
+                            </div>
+                        )}
+                    </form>
                 </div>
             </div>
 
-            <div className="bg-white shadow sm:rounded-lg">
-                <div className="px-4 py-5 sm:px-6">
-                    <h3 className="text-lg font-medium leading-6 text-gray-900">Active Vendors</h3>
-                        <p className="mt-1 max-w-2xl text-sm text-gray-500">
+            <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+                <div className="flex flex-col gap-2 px-4 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+                    <div>
+                        <h3 className="text-lg font-bold leading-6 text-slate-950">Active Vendors</h3>
+                        <p className="mt-1 max-w-2xl text-sm text-slate-600">
                         Registered vendor accounts that can manage marketplace listings.
-                    </p>
+                        </p>
+                    </div>
+                    <div className="rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-700">
+                        <span className="font-semibold text-slate-950">{vendors.length}</span> vendor{vendors.length === 1 ? '' : 's'}
+                    </div>
                 </div>
-                <div className="border-t border-gray-200">
+                <div className="border-t border-slate-200">
                     {loading ? (
-                        <div className="p-4 text-center text-gray-500">Loading...</div>
+                        <div className="space-y-3 p-4">
+                            {Array.from({ length: 3 }).map((_, index) => (
+                                <div key={index} className="h-14 animate-pulse rounded-lg bg-slate-100" />
+                            ))}
+                        </div>
+                    ) : vendors.length === 0 ? (
+                        <div className="p-8 text-center text-sm text-slate-600">
+                            No vendors yet. Send your first invite above.
+                        </div>
                     ) : (
-                        <ul role="list" className="divide-y divide-gray-200">
+                        <ul role="list" className="divide-y divide-slate-200">
                             {vendors.map((vendor) => (
-                                <li key={vendor.id} className="px-4 py-4 sm:px-6">
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center">
-                                            <div className="flex-shrink-0">
-                                                <span className="inline-block h-8 w-8 overflow-hidden rounded-full bg-gray-100">
-                                                    <svg className="h-full w-full text-gray-300" fill="currentColor" viewBox="0 0 24 24">
+                                <li key={vendor.id} className="px-4 py-4 sm:px-5">
+                                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                        <div className="flex min-w-0 items-center">
+                                            <div className="shrink-0">
+                                                <span className="inline-flex h-10 w-10 items-center justify-center overflow-hidden rounded-lg bg-slate-100">
+                                                    <svg className="h-7 w-7 text-slate-300" fill="currentColor" viewBox="0 0 24 24">
                                                         <path d="M24 20.993V24H0v-2.996A14.977 14.977 0 0112.004 15c4.904 0 9.26 2.354 11.996 5.993zM16.002 8.999a4 4 0 11-8 0 4 4 0 018 0z" />
                                                     </svg>
                                                 </span>
                                             </div>
-                                            <div className="ml-4">
-                                                <p className="truncate text-sm font-medium text-green-600">{vendor.email}</p>
+                                            <div className="ml-3 min-w-0">
+                                                <p className="truncate text-sm font-semibold text-slate-950">{vendor.email}</p>
                                                 {vendor.business_name && (
-                                                    <p className="text-xs text-gray-600">{vendor.business_name}</p>
+                                                    <p className="truncate text-xs text-slate-600">{vendor.business_name}</p>
                                                 )}
-                                                <p className="text-xs text-gray-500">Joined: {new Date(vendor.created_at).toLocaleDateString()}</p>
+                                                <p className="text-xs text-slate-500">Joined {new Date(vendor.created_at).toLocaleDateString()}</p>
                                             </div>
                                         </div>
                                         <div>
-                                            <span className="inline-flex rounded-full bg-green-100 px-2 text-xs font-semibold leading-5 text-green-800">
+                                            <span className={`inline-flex rounded-lg px-2.5 py-1 text-xs font-semibold ${vendor.is_verified === false
+                                                ? 'bg-amber-100 text-amber-800'
+                                                : 'bg-emerald-100 text-emerald-800'
+                                                }`}>
                                                 {vendor.is_verified === false ? 'Pending' : 'Active'}
                                             </span>
                                         </div>

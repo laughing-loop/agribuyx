@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/router'
-import Image from 'next/image'
 import { supabase } from '@/lib/supabase'
+import AdminAuthShell from '@/components/AdminAuthShell'
 
 export default function UpdatePassword() {
     const router = useRouter()
@@ -207,55 +207,44 @@ export default function UpdatePassword() {
 
     if (authError) {
         return (
-            <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 flex items-center justify-center p-4">
-                <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full border border-gray-100 text-center">
+            <AdminAuthShell
+                eyebrow="Invite link"
+                title={authError.title}
+                subtitle={authError.message}
+            >
+                <div className="text-center">
                     <div className="mb-6 flex justify-center">
-                        <div className="bg-red-100 p-3 rounded-full">
+                        <div className="rounded-full bg-red-100 p-3">
                             <svg className="h-10 w-10 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
                         </div>
                     </div>
-                    <h2 className="text-2xl font-bold text-gray-900 mb-2">{authError.title}</h2>
-                    <p className="text-gray-500 mb-8">{authError.message}</p>
                     <button
                         onClick={() => router.push('/admin/login')}
-                        className="w-full bg-gray-900 hover:bg-gray-800 text-white font-bold py-3 rounded-lg transition-all shadow-md hover:shadow-lg"
+                        className="h-11 w-full rounded-lg bg-slate-900 px-4 text-sm font-bold text-white transition hover:bg-slate-800"
                     >
                         Return to Login
                     </button>
                 </div>
-            </div>
+            </AdminAuthShell>
         )
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full border border-gray-100">
-                <div className="mb-6 flex justify-center">
-                    <Image
-                        src="/agribuyx_logo-02.svg"
-                        alt="AgriBuyX"
-                        width={180}
-                        height={48}
-                        className="h-12 w-auto"
-                        priority
-                    />
-                </div>
-
-                <div className="text-center mb-8">
-                    <h2 className="text-2xl font-bold text-gray-900">Set New Password</h2>
-                    <p className="text-sm text-gray-500 mt-2">Enter your new password below to secure your account.</p>
-                </div>
-
+        <AdminAuthShell
+            eyebrow="Account setup"
+            title="Set new password"
+            subtitle="Create a password to finish setting up your AgriBuyX merchant account."
+        >
                 <form onSubmit={handleUpdatePassword} className="space-y-5">
                     <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">New Password</label>
+                        <label className="mb-2 block text-sm font-semibold text-slate-700">New Password</label>
                         <input
                             type="password"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
-                            className="block w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors bg-gray-50 focus:bg-white"
+                            className="block h-11 w-full rounded-lg border border-slate-300 bg-slate-50 px-4 text-sm outline-none transition focus:border-emerald-500 focus:bg-white focus:ring-2 focus:ring-emerald-100"
                             placeholder="••••••••"
                             required
                             minLength={6}
@@ -263,12 +252,12 @@ export default function UpdatePassword() {
                     </div>
 
                     <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">Confirm Password</label>
+                        <label className="mb-2 block text-sm font-semibold text-slate-700">Confirm Password</label>
                         <input
                             type="password"
                             value={confirmPassword}
                             onChange={(e) => setConfirmPassword(e.target.value)}
-                            className="block w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors bg-gray-50 focus:bg-white"
+                            className="block h-11 w-full rounded-lg border border-slate-300 bg-slate-50 px-4 text-sm outline-none transition focus:border-emerald-500 focus:bg-white focus:ring-2 focus:ring-emerald-100"
                             placeholder="••••••••"
                             required
                             minLength={6}
@@ -276,7 +265,7 @@ export default function UpdatePassword() {
                     </div>
 
                     {error && (
-                        <div className="bg-red-50 text-red-600 text-sm p-3 rounded-lg flex items-center animate-pulse">
+                        <div className="flex rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
                             <svg className="w-4 h-4 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                                 <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
                             </svg>
@@ -285,7 +274,7 @@ export default function UpdatePassword() {
                     )}
 
                     {message && (
-                        <div className="bg-green-50 text-green-700 text-sm p-3 rounded-lg flex items-center">
+                        <div className="flex rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700">
                             <svg className="w-4 h-4 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                                 <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
                             </svg>
@@ -296,7 +285,7 @@ export default function UpdatePassword() {
                     <button
                         type="submit"
                         disabled={loading || (!sessionVerified && !authError)}
-                        className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg transition-all transform hover:scale-[1.02] shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center"
+                        className="flex h-11 w-full items-center justify-center rounded-lg bg-emerald-600 px-4 text-sm font-bold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                         {loading ? (
                             <>
@@ -313,7 +302,7 @@ export default function UpdatePassword() {
 
                     {showManualCheck && !sessionVerified && (
                         <div className="mt-4 text-center">
-                            <p className="text-xs text-gray-500 mb-2">Taking too long?</p>
+                            <p className="mb-2 text-xs text-slate-500">Taking too long?</p>
                             <div className="space-y-2">
                                 <button
                                     type="button"
@@ -329,7 +318,7 @@ export default function UpdatePassword() {
                                             }
                                         }
                                     }}
-                                    className="text-sm text-green-600 hover:text-green-700 font-medium underline"
+                                    className="text-sm font-semibold text-emerald-700 underline hover:text-emerald-800"
                                 >
                                     Force Refresh Verification
                                 </button>
@@ -339,18 +328,17 @@ export default function UpdatePassword() {
                 </form>
 
                 {debugVisible && (
-                    <div className="mt-8 p-4 bg-gray-100 rounded text-[10px] font-mono overflow-auto">
-                        <p className="font-bold mb-2 text-gray-700">DEBUG DIAGNOSTICS:</p>
+                    <div className="mt-8 overflow-auto rounded bg-slate-100 p-4 font-mono text-[10px]">
+                        <p className="mb-2 font-bold text-slate-700">DEBUG DIAGNOSTICS:</p>
                         <pre>{JSON.stringify(debugInfo, null, 2)}</pre>
                         <button
                             onClick={() => setDebugVisible(false)}
-                            className="mt-2 text-blue-600 underline"
+                            className="mt-2 text-blue-700 underline"
                         >
                             Hide Debug
                         </button>
                     </div>
                 )}
-            </div>
-        </div>
+        </AdminAuthShell>
     )
 }

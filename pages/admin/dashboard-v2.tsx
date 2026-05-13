@@ -120,20 +120,24 @@ export default function AdminDashboardV2() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-50">
-        <p className="text-gray-600">Loading dashboard...</p>
+      <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
+        <div className="w-full max-w-md rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="h-5 w-36 animate-pulse rounded bg-slate-200" />
+          <div className="mt-4 h-8 w-64 animate-pulse rounded bg-slate-200" />
+          <div className="mt-3 h-4 w-full animate-pulse rounded bg-slate-100" />
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="sticky top-0 z-40 border-b bg-white">
+    <div className="min-h-screen bg-slate-50">
+      <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur">
         {/* Profile Sync Warning for Super Admins */}
         {needsSync && (
-          <div className="bg-amber-50 border-b border-amber-200 px-4 py-2.5">
-            <div className="mx-auto max-w-7xl flex flex-col md:flex-row items-center justify-between gap-3 text-center md:text-left">
-              <div className="flex items-center gap-2 text-amber-800 text-sm font-medium">
+          <div className="border-b border-amber-200 bg-amber-50 px-4 py-2.5">
+            <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-3 text-center md:flex-row md:text-left">
+              <div className="flex items-center gap-2 text-sm font-medium text-amber-800">
                 <svg className="h-5 w-5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                 </svg>
@@ -144,23 +148,28 @@ export default function AdminDashboardV2() {
                 disabled={syncing}
                 className="rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-amber-700 disabled:opacity-50"
               >
-                {syncing ? 'Syncing...' : '🛠️ Repair My Profile'}
+                {syncing ? 'Syncing...' : 'Repair profile'}
               </button>
             </div>
           </div>
         )}
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 md:py-4">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-green-600">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 md:py-4">
+          <div className="min-w-0">
+            <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
               Merchant Portal
             </p>
-            <h1 className="text-xl font-bold text-gray-900 md:text-2xl">AgriBuyX Vendor Office</h1>
-            <p className="hidden text-sm text-gray-600 sm:block">Welcome, {admin?.name || admin?.email}</p>
+            <h1 className="truncate text-xl font-bold text-slate-950 md:text-2xl">AgriBuyX Vendor Office</h1>
+            <div className="mt-1 hidden items-center gap-2 text-sm text-slate-600 sm:flex">
+              <span className="truncate">Welcome, {admin?.name || admin?.email}</span>
+              <span className="rounded-lg bg-slate-100 px-2 py-0.5 text-xs font-semibold capitalize text-slate-700">
+                {admin?.role}
+              </span>
+            </div>
           </div>
           <button
             type="button"
             onClick={handleLogout}
-            className="inline-flex items-center gap-2 rounded-full bg-red-600 px-3 py-2 text-xs font-medium text-white shadow-sm transition hover:bg-red-700 md:px-4 md:text-sm"
+            className="inline-flex shrink-0 items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 transition hover:bg-red-100 md:px-4 md:text-sm"
           >
             <svg
               className="h-4 w-4"
@@ -179,9 +188,9 @@ export default function AdminDashboardV2() {
             <span>Log out</span>
           </button>
         </div>
-        <nav className="border-t bg-white">
+        <nav className="border-t border-slate-200 bg-white">
           <div className="mx-auto max-w-7xl px-4">
-            <div className="flex gap-2 overflow-x-auto py-2">
+            <div className="-mx-4 flex gap-2 overflow-x-auto px-4 py-2 md:mx-0 md:px-0">
               <TabPill
                 label="My Inventory"
                 value="products"
@@ -249,9 +258,9 @@ function TabPill({
     <button
       type="button"
       onClick={onClick}
-      className={`whitespace-nowrap rounded-full px-4 py-2 text-sm font-medium transition ${active
-        ? 'bg-green-600 text-white shadow-sm'
-        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+      className={`whitespace-nowrap rounded-lg px-4 py-2 text-sm font-semibold transition ${active
+        ? 'bg-emerald-600 text-white shadow-sm'
+        : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
         }`}
       aria-pressed={active}
     >
@@ -565,30 +574,42 @@ function ProductsTab({ admin }: { admin: Admin | null }) {
 
   return (
     <section className="space-y-4 md:space-y-6">
-      <div className="flex flex-col justify-between gap-3 md:flex-row md:items-center">
-        <div>
-          <h2 className="text-lg font-semibold text-gray-900">Products</h2>
-          <p className="text-sm text-gray-600">Manage marketplace listings.</p>
+      <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm md:p-5">
+        <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
+              Inventory
+            </p>
+            <h2 className="mt-1 text-lg font-bold text-slate-950">Products</h2>
+            <p className="mt-1 text-sm text-slate-600">
+              Manage the listings buyers see in the marketplace.
+            </p>
+          </div>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <div className="rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-700">
+              <span className="font-semibold text-slate-950">{products.length}</span> listing{products.length === 1 ? '' : 's'}
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                if (showForm) {
+                  resetProductForm()
+                  setShowForm(false)
+                } else {
+                  resetProductForm()
+                  setShowForm(true)
+                }
+              }}
+              className="w-full rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 sm:w-auto"
+            >
+              {showForm ? 'Close form' : 'Add product'}
+            </button>
+          </div>
         </div>
-        <button
-          type="button"
-          onClick={() => {
-            if (showForm) {
-              resetProductForm()
-              setShowForm(false)
-            } else {
-              resetProductForm()
-              setShowForm(true)
-            }
-          }}
-          className="w-full rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-green-700 md:w-auto"
-        >
-          {showForm ? 'Cancel' : '+ Add Product'}
-        </button>
       </div>
 
       {showForm && (
-        <div className="rounded-lg bg-white p-4 shadow-sm md:p-6">
+        <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm md:p-6">
           <form onSubmit={handleSubmitProduct} className="space-y-4 md:space-y-6">
             {saveError && (
               <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
@@ -597,8 +618,8 @@ function ProductsTab({ admin }: { admin: Admin | null }) {
             )}
 
             {/* Step indicator */}
-            <div className="flex items-center justify-between text-xs font-medium text-gray-600">
-              <div className="flex gap-2">
+            <div className="-mx-1 overflow-x-auto px-1 text-xs font-medium text-slate-600">
+              <div className="flex min-w-max gap-2">
                 {['Basics', 'Details', 'Media'].map((label, index) => {
                   const step = index + 1
                   const active = formStep === step
@@ -606,14 +627,14 @@ function ProductsTab({ admin }: { admin: Admin | null }) {
                   return (
                     <div
                       key={label}
-                      className={`flex items-center gap-1 rounded-full px-3 py-1 ${active
-                        ? 'bg-green-100 text-green-700'
+                      className={`flex items-center gap-2 rounded-lg border px-3 py-2 ${active
+                        ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
                         : completed
-                          ? 'bg-gray-100 text-gray-600'
-                          : 'bg-gray-50 text-gray-500'
+                          ? 'border-slate-200 bg-slate-100 text-slate-700'
+                          : 'border-slate-200 bg-white text-slate-500'
                         }`}
                     >
-                      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white text-[10px]">
+                      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white text-[10px] font-bold">
                         {step}
                       </span>
                       <span>{label}</span>
@@ -689,18 +710,18 @@ function ProductsTab({ admin }: { admin: Admin | null }) {
                           required
                         />
                         <div>
-                          <label className="mb-1 block text-sm font-medium text-gray-700">Category</label>
+                          <label className="mb-1 block text-sm font-medium text-slate-700">Category</label>
                           <input
                             type="text"
                             placeholder="Search categories..."
                             value={categorySearch}
                             onChange={(e) => setCategorySearch(e.target.value)}
-                            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                            className="w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-emerald-500 focus:bg-white focus:ring-2 focus:ring-emerald-100"
                           />
                           <select
                             value={formData.category_id}
                             onChange={(e) => setFormData({ ...formData, category_id: e.target.value })}
-                            className="mt-2 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                            className="mt-2 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-emerald-500 focus:bg-white focus:ring-2 focus:ring-emerald-100"
                             aria-label="Product Category"
                           >
                             <option value="">Select category</option>
@@ -710,7 +731,7 @@ function ProductsTab({ admin }: { admin: Admin | null }) {
                               </option>
                             ))}
                           </select>
-                          <p className="mt-1 text-xs text-gray-500">
+                          <p className="mt-1 text-xs text-slate-500">
                             Showing {filteredCategories.length} categories
                           </p>
                         </div>
@@ -720,7 +741,7 @@ function ProductsTab({ admin }: { admin: Admin | null }) {
                         <button
                           type="button"
                           onClick={() => setFormStep(2)}
-                          className="w-full rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-green-700 md:w-auto"
+                          className="w-full rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 md:w-auto"
                         >
                           Next
                         </button>
@@ -775,14 +796,14 @@ function ProductsTab({ admin }: { admin: Admin | null }) {
                         <button
                           type="button"
                           onClick={() => setFormStep(1)}
-                          className="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 md:w-auto"
+                          className="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 md:w-auto"
                         >
                           Back
                         </button>
                         <button
                           type="button"
                           onClick={() => setFormStep(3)}
-                          className="w-full rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-green-700 md:w-auto"
+                          className="w-full rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 md:w-auto"
                         >
                           Next
                         </button>
@@ -794,7 +815,7 @@ function ProductsTab({ admin }: { admin: Admin | null }) {
                   {formStep === 3 && (
                     <div className="space-y-4">
                       <div>
-                        <label className="mb-1 block text-sm font-medium text-gray-700">Product Images</label>
+                        <label className="mb-1 block text-sm font-medium text-slate-700">Product Images</label>
 
                         {/* Use a safe check for open */}
                         <button
@@ -806,7 +827,7 @@ function ProductsTab({ admin }: { admin: Admin | null }) {
                               alert('Upload widget is still loading. Please try again in a moment.')
                             }
                           }}
-                          className="w-full rounded-lg bg-blue-600 px-4 py-3 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700 flex items-center justify-center gap-2"
+                          className="flex w-full items-center justify-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm font-semibold text-blue-700 shadow-sm transition hover:bg-blue-100"
                         >
                           <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
@@ -814,7 +835,7 @@ function ProductsTab({ admin }: { admin: Admin | null }) {
                           Upload Images from Cloudinary
                         </button>
 
-                        <p className="mt-2 text-xs text-gray-500">
+                        <p className="mt-2 text-xs text-slate-500">
                           First image will be used as the main product image. You can upload multiple images.
                         </p>
 
@@ -823,7 +844,7 @@ function ProductsTab({ admin }: { admin: Admin | null }) {
                             {formData.image_urls.map((url, index) => (
                               <div
                                 key={index}
-                                className="flex items-center gap-2 rounded border border-gray-200 bg-gray-50 p-2"
+                                className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 p-2"
                               >
                                 <img
                                   src={url}
@@ -833,17 +854,17 @@ function ProductsTab({ admin }: { admin: Admin | null }) {
                                     (e.target as HTMLImageElement).src = 'https://via.placeholder.com/40?text=?'
                                   }}
                                 />
-                                <span className="flex-1 truncate text-xs text-gray-600">{url}</span>
+                                <span className="flex-1 truncate text-xs text-slate-600">{url}</span>
                                 <button
                                   type="button"
                                   onClick={() => handleRemoveImageUrl(index)}
-                                  className="rounded bg-red-600 px-2 py-1 text-xs text-white hover:bg-red-700"
+                                  className="rounded bg-red-600 px-2 py-1 text-xs font-semibold text-white hover:bg-red-700"
                                 >
                                   ✕
                                 </button>
                               </div>
                             ))}
-                            <p className="text-xs text-green-600">
+                            <p className="text-xs font-medium text-emerald-700">
                               {formData.image_urls.length} image(s) added
                             </p>
                           </div>
@@ -870,14 +891,14 @@ function ProductsTab({ admin }: { admin: Admin | null }) {
                         <button
                           type="button"
                           onClick={() => setFormStep(2)}
-                          className="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 md:w-auto"
+                          className="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 md:w-auto"
                         >
                           Back
                         </button>
                         <button
                           type="submit"
                           disabled={saving}
-                          className="w-full rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-green-700 md:w-auto"
+                          className="w-full rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60 md:w-auto"
                         >
                           {saving
                             ? 'Saving...'
@@ -898,11 +919,11 @@ function ProductsTab({ admin }: { admin: Admin | null }) {
       {loading ? (
         <div className="py-8 text-center text-gray-600">Loading products...</div>
       ) : products.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-gray-300 bg-white p-6 text-center text-gray-600">
+        <div className="rounded-lg border border-dashed border-slate-300 bg-white p-8 text-center text-slate-600">
           No products yet. Use "Add Product" to create your first listing.
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 min-[460px]:grid-cols-2 lg:grid-cols-3">
           {products.map((product) => (
             <ProductCard
               key={product.id}
@@ -1686,23 +1707,27 @@ function ProductCard({
   }
 
   return (
-    <div className="overflow-hidden rounded-lg bg-white shadow-sm transition hover:shadow-md">
-      {product.image_url && (
+    <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm transition hover:border-emerald-200 hover:shadow-md">
+      {product.image_url ? (
         <img
           src={product.image_url}
           alt={product.title}
           className="h-40 w-full object-cover"
         />
+      ) : (
+        <div className="flex h-40 w-full items-center justify-center bg-slate-200 text-xs font-medium text-slate-500">
+          No image
+        </div>
       )}
       <div className="p-4">
-        <h3 className="line-clamp-2 text-lg font-semibold text-gray-900">
-          {product.title}
+        <h3 className="line-clamp-2 min-h-12 text-base font-semibold leading-6 text-slate-950">
+          {product.title || 'Untitled product'}
         </h3>
-        <p className="mt-1 text-sm font-semibold text-green-600">
-          GHS ₵{displayPrice}
+        <p className="mt-1 text-sm font-bold text-emerald-700">
+          GHS {displayPrice}
         </p>
         {product.location && (
-          <p className="mt-1 text-sm text-gray-600">{product.location}</p>
+          <p className="mt-1 truncate text-sm text-slate-600">{product.location}</p>
         )}
         {product.description && <MultiLineText text={product.description} />}
         {product.features && <MultiLineText text={product.features} />}
@@ -1710,14 +1735,14 @@ function ProductCard({
           <button
             type="button"
             onClick={() => onEdit(product)}
-            className="flex-1 rounded-lg border border-gray-300 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+            className="flex-1 rounded-lg border border-slate-300 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
           >
             Edit
           </button>
           <button
             type="button"
             onClick={handleDelete}
-            className="flex-1 rounded-lg bg-red-600 py-2 text-sm font-medium text-white transition hover:bg-red-700"
+            className="flex-1 rounded-lg border border-red-200 bg-red-50 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-100"
           >
             Delete
           </button>
@@ -1738,7 +1763,7 @@ function MultiLineText({ text }: { text: string }) {
 
   if (allBullets) {
     return (
-      <ul className="mt-2 list-disc space-y-1 pl-4 text-xs text-gray-600">
+      <ul className="mt-2 list-disc space-y-1 pl-4 text-xs text-slate-600">
         {lines.map((line, index) => (
           <li key={index}>{line.replace(/^-+\s*/, '')}</li>
         ))}
@@ -1747,7 +1772,7 @@ function MultiLineText({ text }: { text: string }) {
   }
 
   return (
-    <p className="mt-2 whitespace-pre-line text-xs text-gray-600">
+    <p className="mt-2 line-clamp-3 whitespace-pre-line text-xs leading-5 text-slate-600">
       {text}
     </p>
   )
@@ -1770,14 +1795,14 @@ function InputField({
 }) {
   return (
     <div>
-      <label className="mb-1 block text-sm font-medium text-gray-700">{label}</label>
+      <label className="mb-1 block text-sm font-medium text-slate-700">{label}</label>
       <input
         type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         required={required}
-        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+        className="w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-sm outline-none transition focus:border-emerald-500 focus:bg-white focus:ring-2 focus:ring-emerald-100"
       />
     </div>
   )
@@ -1798,13 +1823,13 @@ function TextAreaField({
 }) {
   return (
     <div>
-      <label className="mb-1 block text-sm font-medium text-gray-700">{label}</label>
+      <label className="mb-1 block text-sm font-medium text-slate-700">{label}</label>
       <textarea
         value={value}
         onChange={(e) => onChange(e.target.value)}
         rows={rows}
         placeholder={placeholder}
-        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+        className="w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-sm outline-none transition focus:border-emerald-500 focus:bg-white focus:ring-2 focus:ring-emerald-100"
       />
     </div>
   )
@@ -1825,11 +1850,11 @@ function SelectField({
 }) {
   return (
     <div>
-      <label className="mb-1 block text-sm font-medium text-gray-700">{label}</label>
+      <label className="mb-1 block text-sm font-medium text-slate-700">{label}</label>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+        className="w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-sm outline-none transition focus:border-emerald-500 focus:bg-white focus:ring-2 focus:ring-emerald-100"
       >
         <option value="">{placeholder || 'Select an option'}</option>
         {options.map((opt) => (
