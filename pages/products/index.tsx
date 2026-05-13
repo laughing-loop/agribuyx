@@ -3,14 +3,15 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { supabase } from '@/lib/supabase'
 import { getWatermarkedImageUrl as getCloudinaryUrl, getThumbnailUrl } from '@/lib/cloudinary'
+import MarketplaceFooter from '@/components/MarketplaceFooter'
 
 interface Product {
   id: string
   title: string
-  description: string
-  price: number
-  location: string
-  category_id: string
+  description?: string | null
+  price?: number | string | null
+  location?: string | null
+  category_id?: string | null
   created_at: string
   image_url?: string | null
   condition?: string
@@ -41,6 +42,16 @@ function getWatermarkedImageUrl(url: string) {
   if (!url) return url
   // Use thumbnail for listing page (smaller, optimized)
   return getThumbnailUrl(url, 400, 300)
+}
+
+function formatPrice(price?: number | string | null) {
+  const value = Number(price)
+  if (!Number.isFinite(value)) return 'Price on request'
+  return `GHS ${value.toLocaleString()}`
+}
+
+function asText(value: unknown) {
+  return typeof value === 'string' ? value : ''
 }
 
 export default function Products() {
@@ -124,7 +135,7 @@ export default function Products() {
       setProducts(items)
 
       const uniqueLocations = Array.from(
-        new Set(items.map((product) => product.location).filter(Boolean))
+        new Set(items.map((product) => product.location).filter((location): location is string => Boolean(location)))
       )
       setLocations(uniqueLocations)
     } else {
@@ -169,8 +180,8 @@ export default function Products() {
 
   const filteredProducts = products.filter((product) => {
     const matchesSearch =
-      product.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      product.description?.toLowerCase().includes(searchQuery.toLowerCase())
+      asText(product.title).toLowerCase().includes(searchQuery.toLowerCase()) ||
+      asText(product.description).toLowerCase().includes(searchQuery.toLowerCase())
 
     const matchesLocation = selectedLocation
       ? product.location === selectedLocation
@@ -181,12 +192,29 @@ export default function Products() {
 
   const mainCategories = categories.filter((cat) => !cat.parent_id)
   const filteredMainCategories = mainCategories.filter((cat) =>
-    cat.name.toLowerCase().includes(categorySearch.toLowerCase())
+    asText(cat.name).toLowerCase().includes(categorySearch.toLowerCase())
   )
 
   const visibleMainCategories = showAllCategories
     ? filteredMainCategories
     : filteredMainCategories.slice(0, 10)
+
+  const selectedCategoryName =
+    categories.find((cat) => cat.id === selectedCategory)?.name || 'All products'
+
+  const activeFilterCount = [
+    selectedCategory,
+    selectedLocation,
+    searchQuery.trim(),
+  ].filter(Boolean).length
+
+  const clearFilters = () => {
+    setSelectedCategory('')
+    setSelectedLocation('')
+    setSearchQuery('')
+    setCategorySearch('')
+    setActiveMainCategoryId(null)
+  }
 
   const getSubcategories = (parentId: string) =>
     categories.filter((cat) => cat.parent_id === parentId)
@@ -215,6 +243,11 @@ export default function Products() {
   if (socialLinks['whatsapp_channel_url']) {
     tickerItems.push('Join our WhatsApp channel for price alerts and updates')
   }
+
+  const hasSocialLinks =
+    Boolean(socialLinks['whatsapp_channel_url']) ||
+    Boolean(socialLinks['tiktok_url']) ||
+    Boolean(socialLinks['facebook_url'])
 
   const handleSupportSubmit = async (e: any) => {
     e.preventDefault()
@@ -248,10 +281,10 @@ export default function Products() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-slate-50">
       {/* Navigation */}
-      <nav className="bg-white shadow-sm sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 py-3 md:py-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+      <nav className="sticky top-0 z-50 border-b border-slate-200 bg-white/95 shadow-sm backdrop-blur">
+        <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-3 md:flex-row md:items-center md:justify-between md:py-4">
           <div className="flex items-center justify-between">
             <Link href="/products" className="flex items-center gap-2">
               <Image
@@ -262,8 +295,8 @@ export default function Products() {
                 className="h-8 w-auto"
               />
             </Link>
-            <div className="flex items-center gap-2 md:hidden text-xs font-medium text-gray-700">
-              <Link href="/blog" className="hover:text-green-700">
+            <div className="flex items-center gap-2 text-xs font-medium text-slate-700 md:hidden">
+              <Link href="/blog" className="hover:text-emerald-700">
                 Blog
               </Link>
               {socialLinks['whatsapp_channel_url'] && (
@@ -271,39 +304,47 @@ export default function Products() {
                   href={socialLinks['whatsapp_channel_url']}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="hover:text-green-700"
+                  className="hover:text-emerald-700"
                 >
                   Channel
                 </a>
               )}
             </div>
           </div>
-          <div className="flex flex-col gap-2 md:flex-row md:items-center md:gap-4 w-full md:w-auto">
-            <div className="flex items-center gap-2 w-full md:w-auto">
+          <div className="flex w-full flex-col gap-2 md:w-auto md:flex-row md:items-center md:gap-4">
+            <div className="flex w-full items-center gap-2 md:w-auto">
               <div className="relative flex-1 md:w-80 lg:w-96">
-                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
-                  🔍
-                </span>
+                <svg
+                  className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  aria-hidden="true"
+                >
+                  <circle cx="11" cy="11" r="7" />
+                  <path d="M20 20l-3.5-3.5" />
+                </svg>
                 <input
                   type="text"
-                  placeholder="Search products..."
+                  placeholder="Search seeds, fertilizer, tools..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full rounded-full border border-gray-300 bg-gray-50 pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  className="h-10 w-full rounded-lg border border-slate-300 bg-slate-50 pl-9 pr-3 text-sm outline-none transition focus:border-emerald-500 focus:bg-white focus:ring-2 focus:ring-emerald-100"
                 />
               </div>
               <button
                 type="button"
                 onClick={() => setIsSupportOpen(true)}
-                className="hidden md:inline-flex items-center rounded-full border border-green-600 px-3 py-1.5 text-xs font-medium text-green-700 hover:bg-green-50"
+                className="hidden h-10 items-center rounded-lg border border-emerald-600 px-3 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-50 md:inline-flex"
               >
-                Support / Help
+                Support
               </button>
             </div>
-            <div className="hidden md:flex items-center gap-3 text-sm justify-end">
+            <div className="hidden items-center justify-end gap-3 text-sm md:flex">
               <Link
                 href="/blog"
-                className="inline-flex items-center rounded-full px-3 py-1 font-medium text-gray-700 hover:bg-green-50"
+                className="inline-flex items-center rounded-lg px-3 py-2 font-medium text-slate-700 hover:bg-slate-100"
               >
                 Blog
               </Link>
@@ -312,7 +353,7 @@ export default function Products() {
                   href={socialLinks['whatsapp_channel_url']}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center rounded-full px-3 py-1 font-medium text-gray-700 hover:bg-green-50"
+                  className="inline-flex items-center rounded-lg px-3 py-2 font-medium text-slate-700 hover:bg-slate-100"
                 >
                   Channel
                 </a>
@@ -323,7 +364,7 @@ export default function Products() {
       </nav>
 
       {tickerItems.length > 0 && (
-        <div className="bg-green-700 text-white text-[11px] sm:text-xs">
+        <div className="bg-slate-900 text-[11px] text-white sm:text-xs">
           <div className="max-w-7xl mx-auto px-4 py-2 overflow-hidden">
             <div className="ticker-marquee">
               {tickerItems.concat(tickerItems).map((item, index) => (
@@ -336,22 +377,84 @@ export default function Products() {
         </div>
       )}
 
-      <div className="bg-gradient-to-r from-green-600 to-blue-600 text-white py-10 px-4">
-        <div className="max-w-7xl mx-auto text-center md:text-left">
-            <h1 className="text-3xl md:text-4xl font-bold mb-3">Fresh Agricultural Products</h1>
-            <p className="text-sm md:text-base text-green-50">
-            Find seeds, fertilizers, crop protection, livestock supplies, and farm equipment from trusted vendors.
+      <div className="border-b border-slate-200 bg-white px-4 py-6">
+        <div className="mx-auto flex max-w-7xl flex-col gap-4 md:flex-row md:items-end md:justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
+              AgriBuyX Marketplace
             </p>
+            <h1 className="mt-1 text-2xl font-bold text-slate-950 md:text-3xl">
+              Farm inputs and agricultural products
+            </h1>
+            <p className="mt-2 max-w-2xl text-sm text-slate-600 md:text-base">
+              Find seeds, fertilizers, crop protection, livestock supplies, and farm equipment from trusted vendors.
+            </p>
+          </div>
+          <div className="grid grid-cols-3 gap-2 text-center text-xs text-slate-600 md:min-w-80">
+            <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+              <p className="text-lg font-bold text-slate-950">{products.length}</p>
+              <p>Products</p>
+            </div>
+            <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+              <p className="text-lg font-bold text-slate-950">{mainCategories.length}</p>
+              <p>Categories</p>
+            </div>
+            <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+              <p className="text-lg font-bold text-slate-950">{locations.length}</p>
+              <p>Locations</p>
+            </div>
+          </div>
         </div>
       </div>
 
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
+      <div className="mx-auto max-w-7xl px-4 py-6 md:py-8">
+        <div className="-mx-4 mb-4 flex gap-2 overflow-x-auto px-4 pb-1 md:mx-0 md:flex-wrap md:overflow-visible md:px-0">
+          <button
+            type="button"
+            onClick={() => setSelectedCategory('')}
+            className={`shrink-0 rounded-lg border px-3 py-2 text-xs font-semibold transition ${selectedCategory === ''
+              ? 'border-emerald-600 bg-emerald-600 text-white'
+              : 'border-slate-200 bg-white text-slate-700 hover:border-emerald-200 hover:bg-emerald-50'
+              }`}
+          >
+            All
+          </button>
+              {mainCategories.slice(0, 7).map((cat) => (
+            <button
+              key={cat.id}
+              type="button"
+              onClick={() => handleMainCategoryClick(cat)}
+              className={`shrink-0 rounded-lg border px-3 py-2 text-xs font-semibold transition ${selectedCategory === cat.id
+                ? 'border-emerald-600 bg-emerald-600 text-white'
+                : 'border-slate-200 bg-white text-slate-700 hover:border-emerald-200 hover:bg-emerald-50'
+                }`}
+            >
+              <span className="mr-1">{cat.icon}</span>
+              {cat.name}
+            </button>
+          ))}
+        </div>
+
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
           {/* Sidebar - Filters */}
           <div ref={filtersRef} className="lg:col-span-3 relative">
-            <div className="bg-white rounded-lg shadow p-6 lg:sticky lg:top-24">
-              <h3 className="text-xl font-bold text-gray-800 mb-4">Filters</h3>
+            <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm lg:sticky lg:top-24">
+              <div className="mb-4 flex items-center justify-between">
+                <div>
+                  <h3 className="text-base font-bold text-slate-900">Filters</h3>
+                  <p className="text-xs text-slate-500">{activeFilterCount} active</p>
+                </div>
+                {activeFilterCount > 0 && (
+                  <button
+                    type="button"
+                    onClick={clearFilters}
+                    className="text-xs font-semibold text-emerald-700 hover:text-emerald-800"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
               <div className="mb-3">
                 <input
                   type="text"
@@ -361,15 +464,15 @@ export default function Products() {
                     setShowAllCategories(false)
                   }}
                   placeholder="Search categories..."
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
                 />
               </div>
-              <div className="grid grid-cols-4 sm:grid-cols-4 md:grid-cols-4 lg:grid-cols-1 gap-2">
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-1">
                 <button
                   onClick={() => setSelectedCategory('')}
-                  className={`w-full text-left px-4 py-2 rounded-lg transition text-sm ${selectedCategory === ''
-                    ? 'bg-green-600 text-white'
-                    : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
+                  className={`w-full rounded-lg px-3 py-2 text-left text-sm font-medium transition ${selectedCategory === ''
+                    ? 'bg-emerald-600 text-white'
+                    : 'bg-slate-100 text-slate-800 hover:bg-slate-200'
                     }`}
                 >
                   All Products
@@ -378,9 +481,9 @@ export default function Products() {
                   <button
                     key={cat.id}
                     onClick={() => handleMainCategoryClick(cat)}
-                    className={`w-full rounded-lg transition flex flex-col items-center justify-center gap-1 px-2 py-2 text-[11px] sm:text-xs md:text-sm lg:flex-row lg:items-center lg:justify-between lg:px-4 lg:py-2 ${selectedCategory === cat.id
-                      ? 'bg-green-600 text-white'
-                      : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
+                    className={`flex w-full flex-col items-center justify-center gap-1 rounded-lg px-2 py-2 text-[11px] transition sm:text-xs md:text-sm lg:flex-row lg:items-center lg:justify-between lg:px-3 ${selectedCategory === cat.id
+                      ? 'bg-emerald-600 text-white'
+                      : 'bg-slate-100 text-slate-800 hover:bg-slate-200'
                       }`}
                   >
                     <div className="flex flex-col items-center gap-1 lg:flex-row lg:items-center lg:gap-2">
@@ -392,7 +495,7 @@ export default function Products() {
                     {getSubcategories(cat.id).length > 0 && (
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
-                        className="hidden h-3 w-3 text-gray-500 lg:block"
+                        className="hidden h-3 w-3 text-slate-500 lg:block"
                         fill="none"
                         viewBox="0 0 24 24"
                         stroke="currentColor"
@@ -411,18 +514,18 @@ export default function Products() {
                   <button
                     type="button"
                     onClick={() => setShowAllCategories(!showAllCategories)}
-                    className="w-full text-left px-4 py-1.5 text-xs font-medium text-green-700 hover:text-green-800"
+                    className="w-full px-3 py-1.5 text-left text-xs font-semibold text-emerald-700 hover:text-emerald-800"
                   >
                     {showAllCategories ? 'Show fewer categories' : 'Show all categories'}
                   </button>
                 )}
               </div>
-              <div className="mt-4 border-t border-gray-100 pt-4 space-y-2">
-                <p className="text-xs font-semibold uppercase text-gray-500">Location</p>
+              <div className="mt-4 space-y-2 border-t border-slate-100 pt-4">
+                <p className="text-xs font-semibold uppercase text-slate-500">Location</p>
                 <select
                   value={selectedLocation}
                   onChange={(e) => setSelectedLocation(e.target.value)}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
                 >
                   <option value="">All locations</option>
                   {locations.map((loc) => (
@@ -435,7 +538,7 @@ export default function Products() {
                   <button
                     type="button"
                     onClick={() => setSelectedLocation('')}
-                    className="text-xs text-gray-500 underline"
+                    className="text-xs font-medium text-slate-500 underline"
                   >
                     Clear location
                   </button>
@@ -443,8 +546,8 @@ export default function Products() {
               </div>
             </div>
             {activeMainCategoryId && (
-              <div className="hidden lg:block absolute left-full top-0 ml-4 w-64 rounded-lg bg-white p-4 shadow-lg z-30">
-                <h4 className="text-sm font-semibold text-gray-900 mb-2">
+              <div className="absolute left-full top-0 z-30 ml-4 hidden w-64 rounded-lg border border-slate-200 bg-white p-4 shadow-lg lg:block">
+                <h4 className="mb-2 text-sm font-semibold text-slate-900">
                   {categories.find((cat) => cat.id === activeMainCategoryId)?.name}
                 </h4>
                 <div className="space-y-2">
@@ -455,9 +558,9 @@ export default function Products() {
                         setSelectedCategory(subcat.id)
                         setActiveMainCategoryId(null)
                       }}
-                      className={`w-full text-left px-3 py-1.5 rounded-lg text-sm transition ${selectedCategory === subcat.id
-                        ? 'bg-green-600 text-white'
-                        : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
+                      className={`w-full rounded-lg px-3 py-1.5 text-left text-sm transition ${selectedCategory === subcat.id
+                        ? 'bg-emerald-600 text-white'
+                        : 'bg-slate-100 text-slate-800 hover:bg-slate-200'
                         }`}
                     >
                       <span className="mr-1">{subcat.icon}</span>
@@ -465,7 +568,7 @@ export default function Products() {
                     </button>
                   ))}
                   {getSubcategories(activeMainCategoryId).length === 0 && (
-                    <p className="text-xs text-gray-500">No subcategories yet.</p>
+                    <p className="text-xs text-slate-500">No subcategories yet.</p>
                   )}
                 </div>
               </div>
@@ -474,46 +577,83 @@ export default function Products() {
 
           {/* Products Grid */}
           <div className="lg:col-span-6">
+            <div className="mb-4 flex flex-col gap-2 rounded-lg border border-slate-200 bg-white px-4 py-3 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+              <div>
+              <p className="text-sm font-semibold text-slate-950">{selectedCategoryName}</p>
+                <p className="text-xs text-slate-500">
+                  {filteredProducts.length} result{filteredProducts.length === 1 ? '' : 's'}
+                  {selectedLocation ? ` in ${selectedLocation}` : ''}
+                </p>
+              </div>
+              {activeFilterCount > 0 && (
+                <button
+                  type="button"
+                  onClick={clearFilters}
+                  className="self-start rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 sm:self-auto"
+                >
+                  Reset view
+                </button>
+              )}
+            </div>
             {loading ? (
-              <div className="text-center py-12">
-                <p className="text-gray-600">Loading products...</p>
+              <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
+                {Array.from({ length: 6 }).map((_, index) => (
+                  <div key={index} className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+                    <div className="h-40 animate-pulse bg-slate-200" />
+                    <div className="space-y-2 p-3">
+                      <div className="h-4 w-3/4 animate-pulse rounded bg-slate-200" />
+                      <div className="h-4 w-1/2 animate-pulse rounded bg-slate-200" />
+                      <div className="h-3 w-full animate-pulse rounded bg-slate-100" />
+                    </div>
+                  </div>
+                ))}
               </div>
             ) : filteredProducts.length === 0 ? (
-              <div className="text-center py-12 bg-white rounded-lg shadow">
-                <p className="text-gray-600 text-lg">No products found</p>
+              <div className="rounded-lg border border-dashed border-slate-300 bg-white px-6 py-12 text-center">
+                <p className="text-lg font-semibold text-slate-900">No products found</p>
+                <p className="mt-1 text-sm text-slate-600">Try a different search, category, or location.</p>
+                {activeFilterCount > 0 && (
+                  <button
+                    type="button"
+                    onClick={clearFilters}
+                    className="mt-4 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
+                  >
+                    Clear filters
+                  </button>
+                )}
               </div>
             ) : (
               <>
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-4 md:gap-6">
+                <div className="grid grid-cols-1 gap-3 min-[430px]:grid-cols-2 md:grid-cols-3 md:gap-4">
                   {filteredProducts.slice(0, visibleCount).map((product) => (
-                    <Link key={product.id} href={`/products/${product.id}`}>
-                      <div className="bg-white rounded-lg shadow hover:shadow-lg transition transform hover:scale-105 overflow-hidden cursor-pointer">
+                    <Link key={product.id} href={`/products/${product.id}`} className="group block">
+                      <article className="h-full overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm transition hover:border-emerald-200 hover:shadow-md">
                         {product.image_url ? (
                           <img
                             src={getWatermarkedImageUrl(product.image_url)}
                             alt={product.title}
-                            className="w-full h-48 object-cover"
+                            className="h-36 w-full object-cover transition duration-300 group-hover:scale-[1.02] sm:h-40"
                           />
                         ) : (
-                          <div className="w-full h-48 bg-gray-200 flex items-center justify-center">
-                            <span className="text-gray-400">No image</span>
+                          <div className="flex h-36 w-full items-center justify-center bg-slate-200 sm:h-40">
+                            <span className="text-xs font-medium text-slate-500">No image</span>
                           </div>
                         )}
-                        <div className="p-4">
-                          <h3 className="font-semibold text-lg text-gray-800 mb-2 line-clamp-2">
-                            {product.title}
+                        <div className="p-3">
+                          <h3 className="mb-2 line-clamp-2 min-h-10 text-sm font-semibold leading-5 text-slate-900">
+                            {product.title || 'Untitled product'}
                           </h3>
-                          <p className="text-green-600 font-bold text-xl mb-2">
-                            GHS ₵{product.price.toLocaleString()}
+                          <p className="mb-2 text-base font-bold text-emerald-700">
+                            {formatPrice(product.price)}
                           </p>
-                          <p className="text-gray-600 text-sm mb-3 line-clamp-2">
-                            {product.description}
+                          <p className="mb-3 line-clamp-2 text-xs leading-5 text-slate-600">
+                            {product.description || 'No description provided.'}
                           </p>
-                          <p className="text-gray-500 text-sm">
-                            📍 {product.location}
+                          <p className="truncate border-t border-slate-100 pt-2 text-xs font-medium text-slate-500">
+                            {product.location || 'Location not listed'}
                           </p>
                         </div>
-                      </div>
+                      </article>
                     </Link>
                   ))}
                 </div>
@@ -522,7 +662,7 @@ export default function Products() {
                     <button
                       type="button"
                       onClick={() => setVisibleCount((prev) => prev + 12)}
-                      className="rounded-full border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50"
+                      className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
                     >
                       Load more products
                     </button>
@@ -534,85 +674,93 @@ export default function Products() {
 
           {/* Updates & Social Column */}
           <div className="lg:col-span-3">
-            <div className="space-y-6 lg:sticky lg:top-24">
-              <div className="bg-white rounded-lg shadow p-6">
-                <h3 className="text-xl font-bold text-gray-800 mb-2">Updates & Tips</h3>
-                <p className="text-sm text-gray-600 mb-4">
-                  Market updates, storage tips, and platform news for farmers.
+            <div className="space-y-4 lg:sticky lg:top-24">
+              <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 shadow-sm">
+                <p className="text-xs font-semibold uppercase tracking-wide text-emerald-800">
+                  Buyer help
                 </p>
+                <h3 className="mt-1 text-base font-bold text-slate-950">Need help choosing?</h3>
+                <p className="mt-2 text-sm leading-6 text-slate-700">
+                  Ask about product availability, pricing, seller contact, or complaints.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setIsSupportOpen(true)}
+                  className="mt-4 inline-flex w-full items-center justify-center rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-700"
+                >
+                  Contact support
+                </button>
+              </div>
+
+              <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+                <div className="mb-4 flex items-start justify-between gap-3">
+                  <div>
+                    <h3 className="text-base font-bold text-slate-900">Updates & Tips</h3>
+                    <p className="mt-1 text-sm text-slate-600">
+                      Market news and practical buying notes.
+                    </p>
+                  </div>
+                  <Link
+                    href="/blog"
+                    className="shrink-0 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                  >
+                    View all
+                  </Link>
+                </div>
                 {blogLoading ? (
-                  <div className="py-4 text-sm text-gray-600">Loading updates...</div>
+                  <div className="space-y-3">
+                    {Array.from({ length: 3 }).map((_, index) => (
+                      <div key={index} className="rounded-lg border border-slate-100 p-3">
+                        <div className="h-3 w-20 animate-pulse rounded bg-slate-200" />
+                        <div className="mt-2 h-4 w-full animate-pulse rounded bg-slate-200" />
+                        <div className="mt-2 h-3 w-3/4 animate-pulse rounded bg-slate-100" />
+                      </div>
+                    ))}
+                  </div>
                 ) : blogPosts.length === 0 ? (
-                  <div className="py-4 text-sm text-gray-600">
-                    No updates yet. Check back soon.
+                  <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 py-5 text-sm text-slate-600">
+                    No updates yet.
                   </div>
                 ) : (
                   <div className="space-y-3">
                     {blogPosts.slice(0, 3).map((post) => (
-                      <Link key={post.id} href={`/blog/${post.slug}`}>
-                        <div className="cursor-pointer rounded-lg border border-gray-100 bg-white p-3 shadow-sm hover:border-green-200 hover:bg-green-50">
-                          <p className="text-xs text-gray-500">
-                            {new Date(post.created_at).toLocaleDateString()}
+                      <Link
+                        key={post.id}
+                        href={`/blog/${post.slug}`}
+                        className="block rounded-lg border border-slate-200 bg-white p-3 transition hover:border-emerald-200 hover:bg-emerald-50"
+                      >
+                        <p className="text-xs font-medium text-slate-500">
+                          {new Date(post.created_at).toLocaleDateString()}
+                        </p>
+                        <p className="mt-1 line-clamp-2 text-sm font-semibold leading-5 text-slate-900">
+                          {post.title}
+                        </p>
+                        {post.summary && (
+                          <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-600">
+                            {post.summary}
                           </p>
-                          <p className="mt-1 text-sm font-semibold text-gray-900 line-clamp-2">
-                            {post.title}
-                          </p>
-                          {post.summary && (
-                            <p className="mt-1 text-xs text-gray-600 line-clamp-2">
-                              {post.summary}
-                            </p>
-                          )}
-                        </div>
+                        )}
                       </Link>
                     ))}
                   </div>
                 )}
-                <div className="mt-4">
-                  <Link
-                    href="/blog"
-                    className="inline-flex items-center text-sm font-medium text-green-700 hover:text-green-800"
-                  >
-                    View all updates
-                    <span className="ml-1">→</span>
-                  </Link>
-                </div>
               </div>
 
-              <div className="bg-white rounded-lg shadow p-6">
-                <h3 className="text-lg font-semibold text-gray-800 mb-3">Join our channels</h3>
-                <p className="text-sm text-gray-600 mb-4">
-                  Get quick updates about prices, new products, and platform changes.
+              <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+                <h3 className="text-base font-bold text-slate-900">Follow AgriBuyX</h3>
+                <p className="mt-1 text-sm leading-6 text-slate-600">
+                  Get new product alerts and marketplace updates.
                 </p>
-                <div className="flex flex-wrap gap-2">
+                <div className="mt-4 grid gap-2">
                   {socialLinks['whatsapp_channel_url'] && (
                     <a
                       href={socialLinks['whatsapp_channel_url']}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg bg-green-600 px-3 py-2 text-sm font-semibold text-white hover:bg-green-700"
+                      className="inline-flex items-center justify-between rounded-lg bg-emerald-600 px-3 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700"
                     >
-                      <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-white/10">
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          viewBox="0 0 24 24"
-                          className="h-3.5 w-3.5"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            d="M5 20l1.5-3A7 7 0 1119 12a7 7 0 01-7 7H5z"
-                          />
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            d="M9.5 9.5l1 2 2 1"
-                          />
-                        </svg>
-                      </span>
                       <span>WhatsApp updates</span>
+                      <span aria-hidden="true">↗</span>
                     </a>
                   )}
                   {socialLinks['tiktok_url'] && (
@@ -620,20 +768,10 @@ export default function Products() {
                       href={socialLinks['tiktok_url']}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg bg-black px-3 py-2 text-sm font-semibold text-white hover:bg-gray-900"
+                      className="inline-flex items-center justify-between rounded-lg bg-slate-950 px-3 py-2.5 text-sm font-semibold text-white hover:bg-black"
                     >
-                      <span className="inline-flex h-5 w-5 items-center justify-center rounded bg-white/10">
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          viewBox="0 0 24 24"
-                          className="h-3.5 w-3.5"
-                          fill="currentColor"
-                        >
-                          <path d="M9.5 5.5v9.25a2.25 2.25 0 11-1.8-2.2" />
-                          <path d="M14.5 5.5c.4.9 1.24 1.74 2.25 2.16V9a4.25 4.25 0 01-2.25-.66v4.41a4.75 4.75 0 11-3.5-4.6V5.5h3.5z" />
-                        </svg>
-                      </span>
                       <span>TikTok</span>
+                      <span aria-hidden="true">↗</span>
                     </a>
                   )}
                   {socialLinks['facebook_url'] && (
@@ -641,30 +779,36 @@ export default function Products() {
                       href={socialLinks['facebook_url']}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+                      className="inline-flex items-center justify-between rounded-lg bg-blue-700 px-3 py-2.5 text-sm font-semibold text-white hover:bg-blue-800"
                     >
-                      <span className="inline-flex h-5 w-5 items-center justify-center rounded bg-white/10">
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          viewBox="0 0 24 24"
-                          className="h-3.5 w-3.5"
-                          fill="currentColor"
-                        >
-                          <path d="M13 10.5V8.75c0-.62.13-.9 1.02-.9H15V6h-1.56C11.86 6 11 6.86 11 8.54v1.96H9v2.25h2V18h2v-4.25h2V11.5h-2z" />
-                        </svg>
-                      </span>
                       <span>Facebook</span>
+                      <span aria-hidden="true">↗</span>
                     </a>
                   )}
                 </div>
-                {!socialLoading &&
-                  !socialLinks['whatsapp_channel_url'] &&
-                  !socialLinks['tiktok_url'] &&
-                  !socialLinks['facebook_url'] && (
-                    <p className="mt-3 text-xs text-gray-500">
-                      No social links configured yet. Add them from the admin dashboard.
-                    </p>
-                  )}
+                {!socialLoading && !hasSocialLinks && (
+                  <p className="mt-3 rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-500">
+                    Social links are not configured yet.
+                  </p>
+                )}
+              </div>
+
+              <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+                <h3 className="text-base font-bold text-slate-900">Marketplace notes</h3>
+                <div className="mt-3 space-y-3 text-sm text-slate-600">
+                  <div className="flex gap-3">
+                    <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-emerald-500" />
+                    <p>Contact the seller directly before visiting or making payment.</p>
+                  </div>
+                  <div className="flex gap-3">
+                    <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-emerald-500" />
+                    <p>Confirm price, quantity, location, and product condition.</p>
+                  </div>
+                  <div className="flex gap-3">
+                    <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-emerald-500" />
+                    <p>Report suspicious listings through support.</p>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -675,7 +819,7 @@ export default function Products() {
       <button
         type="button"
         onClick={() => setIsSupportOpen(true)}
-        className="fixed bottom-20 right-4 z-40 inline-flex h-12 w-12 items-center justify-center rounded-full bg-green-600 text-white shadow-lg md:hidden"
+        className="fixed bottom-4 right-4 z-40 inline-flex h-12 w-12 items-center justify-center rounded-full bg-emerald-600 text-white shadow-lg md:hidden"
         aria-label="Support and complaints"
       >
         <svg
@@ -701,7 +845,7 @@ export default function Products() {
 
       {isSupportOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-          <div className="w-full max-w-md rounded-lg bg-white p-5 shadow-lg">
+          <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-lg bg-white p-5 shadow-lg">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-base font-semibold text-gray-900">Support / Complaints</h2>
               <button
@@ -793,13 +937,14 @@ export default function Products() {
         </div>
       )}
 
-      {/* Footer */}
-      <footer className="bg-gray-900 text-white text-center py-8 mt-20">
-        <p className="mb-2">&copy; 2026 AgriBuyX. All rights reserved. | agribuyx.com</p>
-        <Link href="/admin/login" className="text-xs text-gray-500 hover:text-gray-300 transition-colors uppercase tracking-wider">
-          Vendor Office
-        </Link>
-      </footer>
+      <MarketplaceFooter
+        socialLinks={{
+          whatsapp_channel_url: socialLinks['whatsapp_channel_url'],
+          tiktok_url: socialLinks['tiktok_url'],
+          facebook_url: socialLinks['facebook_url'],
+        }}
+        onSupportClick={() => setIsSupportOpen(true)}
+      />
     </div>
   )
 }

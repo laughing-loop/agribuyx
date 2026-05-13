@@ -6,7 +6,7 @@ class AppErrorBoundary extends Component<
   { children: ReactNode },
   { error: Error | null }
 > {
-  state = { error: null }
+  state: { error: Error | null } = { error: null }
 
   static getDerivedStateFromError(error: Error) {
     return { error }
@@ -30,6 +30,11 @@ class AppErrorBoundary extends Component<
             <p className="mt-2 text-sm text-gray-600">
               Refresh the page and try again. If it happens after saving a product, check the product fields and image upload setup.
             </p>
+            {process.env.NODE_ENV !== 'production' && (
+              <pre className="mt-4 max-h-48 overflow-auto rounded-lg bg-slate-950 p-3 text-xs text-white">
+                {this.state.error?.message}
+              </pre>
+            )}
             <button
               type="button"
               onClick={() => window.location.reload()}

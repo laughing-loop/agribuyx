@@ -4,15 +4,16 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { supabase } from '@/lib/supabase'
 import { getWatermarkedImageUrl as getCloudinaryUrl, getThumbnailUrl } from '@/lib/cloudinary'
+import MarketplaceFooter from '@/components/MarketplaceFooter'
 
 interface Product {
   id: string
   title: string
-  description: string
-  price: number
-  location: string
-  image_url: string
-  category_id: string
+  description?: string | null
+  price?: number | string | null
+  location?: string | null
+  image_url?: string | null
+  category_id?: string | null
   created_at: string
   condition?: string
   warranty?: string
@@ -46,6 +47,17 @@ interface ProductImage {
 function getWatermarkedImageUrl(url: string) {
   if (!url) return url
   return getCloudinaryUrl(url)
+}
+
+function formatPrice(price?: number | string | null) {
+  const value = Number(price)
+  if (!Number.isFinite(value)) return 'Price on request'
+  return `GHS ${value.toLocaleString()}`
+}
+
+function getListingImageUrl(url: string) {
+  if (!url) return url
+  return getThumbnailUrl(url, 400, 300)
 }
 
 export default function ProductDetail() {
@@ -106,12 +118,16 @@ export default function ProductDetail() {
         setCategory(categoryData)
       }
 
-      const { data: imageData } = await supabase
+      const { data: imageData, error: imageError } = await supabase
         .from('product_images')
         .select('*')
         .eq('product_id', productData.id)
 
-      const imageRows = imageData || []
+      if (imageError && imageError.code !== '42P01') {
+        console.warn('Unable to load product images:', imageError.message)
+      }
+
+      const imageRows = imageError?.code === '42P01' ? [] : imageData || []
       setImages(imageRows)
       setSelectedImageUrl(imageRows[0]?.image_url || productData.image_url || '')
 
@@ -202,17 +218,24 @@ export default function ProductDetail() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <p className="text-gray-600">Loading product details...</p>
+      <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
+        <div className="w-full max-w-3xl rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="h-72 animate-pulse rounded-lg bg-slate-200" />
+          <div className="mt-4 space-y-3">
+            <div className="h-5 w-2/3 animate-pulse rounded bg-slate-200" />
+            <div className="h-5 w-1/3 animate-pulse rounded bg-slate-200" />
+            <div className="h-4 w-full animate-pulse rounded bg-slate-100" />
+          </div>
+        </div>
       </div>
     )
   }
 
   if (!product) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <nav className="bg-white shadow-sm">
-          <div className="max-w-6xl mx-auto px-4 py-4">
+      <div className="min-h-screen bg-slate-50">
+        <nav className="border-b border-slate-200 bg-white shadow-sm">
+          <div className="mx-auto max-w-6xl px-4 py-4">
             <Link href="/products" className="inline-flex items-center gap-2">
               <Image
                 src="/agribuyx_logo-02.svg"
@@ -224,11 +247,12 @@ export default function ProductDetail() {
             </Link>
           </div>
         </nav>
-        <div className="flex items-center justify-center min-h-[80vh]">
+        <div className="flex min-h-[80vh] items-center justify-center px-4">
           <div className="text-center">
-            <p className="text-gray-600 mb-4">Product not found</p>
-            <Link href="/products" className="text-green-600 hover:text-green-700 font-semibold">
-              ← Back to Products
+            <p className="mb-2 text-lg font-semibold text-slate-900">Product not found</p>
+            <p className="mb-4 text-sm text-slate-600">This listing may have been removed.</p>
+            <Link href="/products" className="font-semibold text-emerald-700 hover:text-emerald-800">
+              Back to Products
             </Link>
           </div>
         </div>
@@ -244,10 +268,10 @@ export default function ProductDetail() {
         : []
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-slate-50">
       {/* Navigation */}
-      <nav className="bg-white shadow-sm sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+      <nav className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 shadow-sm backdrop-blur">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3">
           <Link href="/products" className="flex items-center gap-2">
             <Image
               src="/agribuyx_logo-02.svg"
@@ -260,13 +284,13 @@ export default function ProductDetail() {
           <div className="flex items-center gap-4 text-xs sm:text-sm">
             <Link
               href="/products"
-              className="text-gray-700 hover:text-green-700 font-medium hidden xs:inline-flex"
+              className="hidden font-medium text-slate-700 hover:text-emerald-700 xs:inline-flex"
             >
-              Shop
+              Marketplace
             </Link>
             <Link
               href="/blog"
-              className="text-gray-700 hover:text-green-700 font-medium hidden sm:inline-flex"
+              className="hidden font-medium text-slate-700 hover:text-emerald-700 sm:inline-flex"
             >
               Blog
             </Link>
@@ -275,16 +299,16 @@ export default function ProductDetail() {
       </nav>
 
       {/* Product Detail */}
-      <div className="max-w-7xl mx-auto px-4 py-6 md:py-8">
+      <div className="mx-auto max-w-7xl px-4 py-6 md:py-8">
         <Link
           href="/products"
-          className="text-green-600 hover:text-green-700 font-semibold mb-3 inline-block text-sm"
+          className="mb-4 inline-flex items-center rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
         >
-          ← Back to Products
+          Back to marketplace
         </Link>
 
         {/* Breadcrumb-style context */}
-        <div className="text-xs text-gray-500 mb-4 flex flex-wrap items-center gap-1">
+        <div className="mb-4 flex flex-wrap items-center gap-1 text-xs text-slate-500">
           <span>Home</span>
           <span>/</span>
           <span>Products</span>
@@ -295,7 +319,7 @@ export default function ProductDetail() {
             </>
           )}
           <span>/</span>
-          <span className="truncate max-w-[10rem] sm:max-w-xs font-medium text-gray-700">
+          <span className="max-w-[10rem] truncate font-medium text-slate-700 sm:max-w-xs">
             {product.title}
           </span>
         </div>
@@ -303,24 +327,24 @@ export default function ProductDetail() {
         <div className="grid grid-cols-1 gap-6 md:grid-cols-8 lg:grid-cols-12">
           {/* LEFT COLUMN: Image gallery */}
           <div className="md:col-span-4 lg:col-span-5">
-            <div className="overflow-hidden rounded-lg bg-white shadow">
+            <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
               {galleryImages.length > 0 ? (
                 <>
                   <img
                     src={getWatermarkedImageUrl(selectedImageUrl || galleryImages[0].image_url)}
                     alt={product.title}
-                    className="w-full h-80 md:h-96 object-cover"
+                    className="h-80 w-full object-cover md:h-96"
                   />
                   {galleryImages.length > 1 && (
-                    <div className="border-t border-gray-100 bg-gray-50 px-3 py-3">
+                    <div className="border-t border-slate-100 bg-slate-50 px-3 py-3">
                       <div className="grid grid-cols-4 gap-2">
                         {galleryImages.map((img) => (
                           <button
                             key={img.id}
                             type="button"
                             onClick={() => setSelectedImageUrl(img.image_url)}
-                            className={`overflow-hidden rounded border-2 ${selectedImageUrl === img.image_url
-                              ? 'border-green-600'
+                            className={`overflow-hidden rounded-lg border-2 ${selectedImageUrl === img.image_url
+                              ? 'border-emerald-600'
                               : 'border-transparent'
                               }`}
                             aria-label={`Show image for ${product.title}`}
@@ -337,8 +361,8 @@ export default function ProductDetail() {
                   )}
                 </>
               ) : (
-                <div className="w-full h-80 md:h-96 bg-gray-200 flex items-center justify-center">
-                  <span className="text-gray-400">No image available</span>
+                <div className="flex h-80 w-full items-center justify-center bg-slate-200 md:h-96">
+                  <span className="text-sm font-medium text-slate-500">No image available</span>
                 </div>
               )}
             </div>
@@ -347,20 +371,20 @@ export default function ProductDetail() {
           {/* CENTER COLUMN: Product info */}
           <div className="md:col-span-4 lg:col-span-4 space-y-4">
             {category && (
-              <div className="inline-flex items-center gap-2 rounded-full bg-green-100 px-3 py-1 text-xs font-semibold text-green-800">
+              <div className="inline-flex items-center gap-2 rounded-lg bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-800">
                 <span>{category.icon}</span>
                 <span>{category.name}</span>
               </div>
             )}
 
             <div className="flex items-start justify-between gap-3">
-              <h1 className="text-2xl md:text-3xl font-bold text-gray-900">{product.title}</h1>
+              <h1 className="text-2xl font-bold text-slate-950 md:text-3xl">{product.title}</h1>
               <button
                 type="button"
                 onClick={toggleWishlist}
-                className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium transition ${isInWishlist
+                className={`inline-flex shrink-0 items-center rounded-lg border px-3 py-1.5 text-xs font-semibold transition ${isInWishlist
                   ? 'border-red-200 bg-red-50 text-red-600'
-                  : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
+                  : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
                   }`}
               >
                 <span className="mr-1">{isInWishlist ? '❤' : '♡'}</span>
@@ -368,23 +392,30 @@ export default function ProductDetail() {
               </button>
             </div>
 
-            <div className="flex items-center gap-2 text-sm text-gray-600">
-              <span>📍 {product.location}</span>
+            <div className="flex flex-wrap items-center gap-2 text-sm text-slate-600">
+              <span className="rounded-lg border border-slate-200 bg-white px-3 py-1">
+                {product.location || 'Location not listed'}
+              </span>
+              <span className="rounded-lg border border-slate-200 bg-white px-3 py-1">
+                Posted {new Date(product.created_at).toLocaleDateString()}
+              </span>
             </div>
 
-            <div className="mt-4 pt-4 space-y-4 border-t border-gray-100">
-              <div className="pb-4">
-                <h3 className="text-sm font-semibold text-gray-800 mb-1">Description</h3>
-                <p className="text-sm text-gray-700 whitespace-pre-wrap break-words">{product.description}</p>
+            <div className="mt-4 space-y-4 border-t border-slate-200 pt-4">
+              <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+                <h3 className="mb-2 text-sm font-semibold text-slate-900">Description</h3>
+                <p className="whitespace-pre-wrap break-words text-sm leading-6 text-slate-700">
+                  {product.description || 'No description provided.'}
+                </p>
               </div>
 
               {product.features && (
-                <div className="pt-4 border-t border-gray-100">
-                  <h3 className="text-sm font-semibold text-gray-800 mb-1">Features & Specifications</h3>
-                  <div className="rounded-lg bg-gray-50 p-3">
+                <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+                  <h3 className="mb-2 text-sm font-semibold text-slate-900">Features & Specifications</h3>
+                  <div className="rounded-lg bg-slate-50 p-3">
                     {product.features.split('\n').map((feature: string, idx: number) => (
                       feature.trim() && (
-                        <p key={idx} className="text-sm text-gray-700 py-0.5 break-words">
+                        <p key={idx} className="break-words py-0.5 text-sm text-slate-700">
                           {feature.trim().startsWith('-') ? feature.trim() : `• ${feature.trim()}`}
                         </p>
                       )
@@ -397,40 +428,40 @@ export default function ProductDetail() {
 
           {/* RIGHT COLUMN: Buy / contact box */}
           <div className="md:col-span-8 lg:col-span-3">
-            <aside className="rounded-lg bg-white p-4 shadow lg:sticky lg:top-24 space-y-4">
+            <aside className="space-y-4 rounded-lg border border-slate-200 bg-white p-4 shadow-sm lg:sticky lg:top-24">
               <div>
-                <p className="text-xs font-semibold uppercase text-gray-500">Price</p>
-                <p className="text-2xl md:text-3xl font-bold text-green-600">
-                  GHS ₵{product.price.toLocaleString()}
+                <p className="text-xs font-semibold uppercase text-slate-500">Price</p>
+                <p className="text-2xl font-bold text-emerald-700 md:text-3xl">
+                  {formatPrice(product.price)}
                 </p>
               </div>
 
-              <div className="grid grid-cols-2 gap-3 text-xs text-gray-700">
-                <div>
-                  <p className="text-[10px] uppercase text-gray-500">Condition</p>
+              <div className="grid grid-cols-2 gap-3 text-xs text-slate-700">
+                <div className="rounded-lg bg-slate-50 p-3">
+                  <p className="text-[10px] uppercase text-slate-500">Condition</p>
                   <p className="font-semibold">{product.condition || 'New'}</p>
                 </div>
-                <div>
-                  <p className="text-[10px] uppercase text-gray-500">Warranty</p>
+                <div className="rounded-lg bg-slate-50 p-3">
+                  <p className="text-[10px] uppercase text-slate-500">Warranty</p>
                   <p className="font-semibold">
-                    {product.warranty === 'Yes' ? `✓ ${product.warranty_period}` : 'No'}
+                    {product.warranty === 'Yes' ? product.warranty_period || 'Yes' : 'No'}
                   </p>
                 </div>
-                <div>
-                  <p className="text-[10px] uppercase text-gray-500">Location</p>
-                  <p className="font-semibold">📍 {product.location}</p>
+                <div className="rounded-lg bg-slate-50 p-3">
+                  <p className="text-[10px] uppercase text-slate-500">Location</p>
+                  <p className="font-semibold">{product.location || '-'}</p>
                 </div>
-                <div>
-                  <p className="text-[10px] uppercase text-gray-500">Posted</p>
+                <div className="rounded-lg bg-slate-50 p-3">
+                  <p className="text-[10px] uppercase text-slate-500">Posted</p>
                   <p className="font-semibold">{new Date(product.created_at).toLocaleDateString()}</p>
                 </div>
               </div>
 
-              <div className="pt-2 border-t border-gray-100">
+              <div className="border-t border-slate-100 pt-2">
                 <div className="mb-3">
-                  <h3 className="text-sm font-semibold text-gray-800">Contact seller</h3>
+                  <h3 className="text-sm font-semibold text-slate-900">Contact seller</h3>
                   {vendor && (
-                    <p className="text-xs text-gray-600">Sold by: <span className="font-medium text-green-700">{vendor.business_name}</span></p>
+                    <p className="text-xs text-slate-600">Sold by: <span className="font-medium text-emerald-700">{vendor.business_name}</span></p>
                   )}
                 </div>
 
@@ -444,9 +475,9 @@ export default function ProductDetail() {
                     })()}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex-1 rounded-lg bg-green-600 py-2.5 text-center text-sm font-semibold text-white transition hover:bg-green-700"
+                    className="flex-1 rounded-lg bg-emerald-600 py-2.5 text-center text-sm font-semibold text-white transition hover:bg-emerald-700"
                   >
-                    💬 WhatsApp
+                    WhatsApp seller
                   </a>
 
                   {vendor?.facebook_url && (
@@ -484,18 +515,18 @@ export default function ProductDetail() {
 
                   <a
                     href={`mailto:support@agribuyx.com?subject=Interested in ${product.title}`}
-                    className="flex-1 rounded-lg bg-gray-600 py-2.5 text-center text-sm font-semibold text-white transition hover:bg-gray-700"
+                    className="flex-1 rounded-lg bg-slate-700 py-2.5 text-center text-sm font-semibold text-white transition hover:bg-slate-800"
                   >
-                    📧 Email Support
+                    Email support
                   </a>
                 </div>
               </div>
 
-              <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-gray-100 text-xs text-gray-600">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-2 text-xs text-slate-600">
                 <button
                   type="button"
                   onClick={() => handleShare('whatsapp')}
-                  className="inline-flex items-center gap-1 text-[11px] font-medium text-green-700 hover:text-green-800"
+                  className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 hover:text-emerald-800"
                 >
                   <span>Share via WhatsApp</span>
                 </button>
@@ -506,14 +537,14 @@ export default function ProductDetail() {
                     const text = `I'm interested in ${product.title}`;
                     window.open(`https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`, '_blank');
                   }}
-                  className="inline-flex items-center gap-1 text-[11px] font-medium text-blue-600 hover:text-blue-700"
+                  className="inline-flex items-center gap-1 text-[11px] font-semibold text-blue-700 hover:text-blue-800"
                 >
                   <span>Telegram</span>
                 </button>
                 <button
                   type="button"
                   onClick={copyLink}
-                  className="inline-flex items-center gap-1 text-[11px] font-medium text-gray-700 hover:text-gray-900"
+                  className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-700 hover:text-slate-900"
                 >
                   <span>Copy link</span>
                 </button>
@@ -524,40 +555,40 @@ export default function ProductDetail() {
 
         {/* Related Products Section */}
         <div className="mt-10">
-          <h2 className="text-xl md:text-2xl font-bold text-gray-800 mb-4">Similar products</h2>
+          <h2 className="mb-4 text-xl font-bold text-slate-900 md:text-2xl">Similar products</h2>
           {relatedProducts.length === 0 ? (
-            <p className="text-sm text-gray-600 bg-white rounded-lg py-6 text-center">
+            <p className="rounded-lg border border-slate-200 bg-white py-6 text-center text-sm text-slate-600">
               No similar products to show yet.
             </p>
           ) : (
             <>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="grid grid-cols-1 gap-4 min-[430px]:grid-cols-2 lg:grid-cols-4">
                 {relatedProducts.slice(0, relatedVisibleCount).map((item) => (
-                  <Link key={item.id} href={`/products/${item.id}`}>
-                    <div className="cursor-pointer overflow-hidden rounded-lg bg-white shadow hover:shadow-md">
+                  <Link key={item.id} href={`/products/${item.id}`} className="group block">
+                    <div className="h-full cursor-pointer overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm transition hover:border-emerald-200 hover:shadow-md">
                       {item.image_url ? (
                         <img
-                          src={getWatermarkedImageUrl(item.image_url)}
+                          src={getListingImageUrl(item.image_url)}
                           alt={item.title}
-                          className="h-32 w-full object-cover"
+                          className="h-32 w-full object-cover transition duration-300 group-hover:scale-[1.02]"
                         />
                       ) : (
-                        <div className="h-32 w-full bg-gray-200 flex items-center justify-center">
-                          <span className="text-xs text-gray-400">No image</span>
+                        <div className="flex h-32 w-full items-center justify-center bg-slate-200">
+                          <span className="text-xs text-slate-500">No image</span>
                         </div>
                       )}
                       <div className="p-3">
-                        <p className="text-xs text-gray-500 mb-1 truncate">
+                        <p className="mb-1 truncate text-xs text-slate-500">
                           {category?.name || 'Product'}
                         </p>
-                        <h3 className="text-sm font-semibold text-gray-900 line-clamp-2">
+                        <h3 className="line-clamp-2 text-sm font-semibold text-slate-900">
                           {item.title}
                         </h3>
-                        <p className="mt-1 text-sm font-bold text-green-600">
-                          GHS ₵{item.price.toLocaleString()}
+                        <p className="mt-1 text-sm font-bold text-emerald-700">
+                          {formatPrice(item.price)}
                         </p>
-                        <p className="mt-1 text-xs text-gray-500 truncate">
-                          📍 {item.location}
+                        <p className="mt-1 truncate text-xs text-slate-500">
+                          {item.location || 'Location not listed'}
                         </p>
                       </div>
                     </div>
@@ -569,7 +600,7 @@ export default function ProductDetail() {
                   <button
                     type="button"
                     onClick={() => setRelatedVisibleCount((prev) => prev + 4)}
-                    className="rounded-full border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50"
+                    className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
                   >
                     Load more similar products
                   </button>
@@ -580,10 +611,7 @@ export default function ProductDetail() {
         </div>
       </div>
 
-      {/* Footer */}
-      <footer className="bg-gray-900 text-white text-center py-8 mt-20">
-        <p>&copy; 2026 AgriBuyX. All rights reserved. | agribuyx.com</p>
-      </footer>
+      <MarketplaceFooter />
     </div>
   )
 }
