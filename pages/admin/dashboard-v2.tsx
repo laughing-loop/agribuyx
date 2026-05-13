@@ -647,316 +647,260 @@ function ProductsTab({ admin }: { admin: Admin | null }) {
       </div>
 
       {showForm && (
-        <div ref={formPanelRef} className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm md:p-6">
-          <form onSubmit={handleSubmitProduct} className="space-y-4 md:space-y-6">
-            {saveError && (
-              <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-                {saveError}
-              </div>
-            )}
-
-            {/* Step indicator */}
-            <div className="-mx-1 overflow-x-auto px-1 text-xs font-medium text-slate-600">
-              <div className="flex min-w-max gap-2">
-                {['Basics', 'Details', 'Media'].map((label, index) => {
-                  const step = index + 1
-                  const active = formStep === step
-                  const completed = formStep > step
-                  return (
-                    <div
-                      key={label}
-                      className={`flex items-center gap-2 rounded-lg border px-3 py-2 ${active
-                        ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
-                        : completed
-                          ? 'border-slate-200 bg-slate-100 text-slate-700'
-                          : 'border-slate-200 bg-white text-slate-500'
-                        }`}
-                    >
-                      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white text-[10px] font-bold">
-                        {step}
-                      </span>
-                      <span>{label}</span>
-                    </div>
-                  )
-                })}
+        <div className="fixed inset-0 z-50 flex justify-end bg-slate-950/40">
+          <div ref={formPanelRef} className="flex h-full w-full max-w-2xl flex-col bg-white shadow-2xl">
+            <div className="border-b border-slate-200 px-4 py-4 sm:px-6">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
+                    {formMode === 'edit' ? 'Edit listing' : 'New listing'}
+                  </p>
+                  <h3 className="mt-1 text-lg font-bold text-slate-950">
+                    {formMode === 'edit' ? 'Update product' : 'Add product'}
+                  </h3>
+                  <p className="mt-1 text-sm text-slate-600">
+                    Fill the product details buyers will see in the marketplace.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    resetProductForm()
+                    setShowForm(false)
+                  }}
+                  className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                >
+                  Close
+                </button>
               </div>
             </div>
 
-            <CldUploadWidget
-              uploadPreset={config.cloudinary.uploadPreset}
-              config={{
-                cloud: {
-                  cloudName: config.cloudinary.cloudName,
-                },
-              }}
-              onSuccess={(result: any) => {
-                if (result.event === 'success') {
-                  const imageUrl = result.info.secure_url
-                  if (!formData.image_urls.includes(imageUrl)) {
-                    setFormData({
-                      ...formData,
-                      image_urls: [...formData.image_urls, imageUrl],
-                    })
-                  }
-                }
-              }}
-              options={{
-                sources: ['local', 'url', 'camera'],
-                multiple: true,
-                maxFiles: 10,
-                styles: {
-                  palette: {
-                    window: '#FFFFFF',
-                    windowBorder: '#90A0B3',
-                    tabIcon: '#16a34a',
-                    menuIcons: '#5A616A',
-                    textDark: '#000000',
-                    textLight: '#FFFFFF',
-                    link: '#16a34a',
-                    action: '#16a34a',
-                    inactiveTabIcon: '#0E2F5A',
-                    error: '#F44235',
-                    inProgress: '#16a34a',
-                    complete: '#20B832',
-                    sourceBg: '#E4EBF1',
-                  },
-                },
-              }}
-            >
-              {({ open }: any) => (
-                <>
-                  {/* Step 1: Basic info */}
-                  {formStep === 1 && (
-                    <div className="space-y-4">
-                      <div className="grid gap-4 md:grid-cols-2">
-                        <InputField
-                          label="Title *"
-                          value={formData.title}
-                          onChange={(value) => setFormData({ ...formData, title: value })}
-                          placeholder="e.g. Fresh Tomatoes"
-                          required
-                        />
-                        <InputField
-                          label="Price (GHS) *"
-                          type="number"
-                          value={formData.price}
-                          onChange={(value) => setFormData({ ...formData, price: value })}
-                          placeholder="0.00"
-                          required
-                        />
-                        <InputField
-                          label="Location *"
-                          value={formData.location}
-                          onChange={(value) => setFormData({ ...formData, location: value })}
-                          placeholder="e.g. Kumasi, Central Region"
-                          required
-                        />
-                        <div>
-                          <label className="mb-1 block text-sm font-medium text-slate-700">Category</label>
-                          <input
-                            type="text"
-                            placeholder="Search categories..."
-                            value={categorySearch}
-                            onChange={(e) => setCategorySearch(e.target.value)}
-                            className="w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-emerald-500 focus:bg-white focus:ring-2 focus:ring-emerald-100"
+            <form onSubmit={handleSubmitProduct} className="flex min-h-0 flex-1 flex-col">
+              <div className="min-h-0 flex-1 space-y-6 overflow-y-auto px-4 py-5 sm:px-6">
+                {saveError && (
+                  <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                    {saveError}
+                  </div>
+                )}
+
+                <section className="space-y-4">
+                  <div>
+                    <h4 className="text-sm font-bold text-slate-950">Basics</h4>
+                    <p className="mt-1 text-xs text-slate-500">Required fields for every listing.</p>
+                  </div>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <InputField
+                      label="Title *"
+                      value={formData.title}
+                      onChange={(value) => setFormData((prev) => ({ ...prev, title: value }))}
+                      placeholder="e.g. Fresh Tomatoes"
+                      required
+                    />
+                    <InputField
+                      label="Price (GHS) *"
+                      type="number"
+                      value={formData.price}
+                      onChange={(value) => setFormData((prev) => ({ ...prev, price: value }))}
+                      placeholder="0.00"
+                      required
+                    />
+                    <InputField
+                      label="Location *"
+                      value={formData.location}
+                      onChange={(value) => setFormData((prev) => ({ ...prev, location: value }))}
+                      placeholder="e.g. Kumasi, Central Region"
+                      required
+                    />
+                    <div>
+                      <label className="mb-1 block text-sm font-medium text-slate-700">Category</label>
+                      <input
+                        type="text"
+                        placeholder="Search categories..."
+                        value={categorySearch}
+                        onChange={(e) => setCategorySearch(e.target.value)}
+                        className="w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-emerald-500 focus:bg-white focus:ring-2 focus:ring-emerald-100"
+                      />
+                      <select
+                        value={formData.category_id}
+                        onChange={(e) => setFormData((prev) => ({ ...prev, category_id: e.target.value }))}
+                        className="mt-2 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-emerald-500 focus:bg-white focus:ring-2 focus:ring-emerald-100"
+                        aria-label="Product Category"
+                      >
+                        <option value="">Select category</option>
+                        {filteredCategories.map((cat) => (
+                          <option key={cat.id} value={cat.id}>
+                            {cat.icon} {cat.name}
+                          </option>
+                        ))}
+                      </select>
+                      <p className="mt-1 text-xs text-slate-500">
+                        Showing {filteredCategories.length} categories
+                      </p>
+                    </div>
+                  </div>
+                </section>
+
+                <section className="space-y-4 border-t border-slate-200 pt-5">
+                  <div>
+                    <h4 className="text-sm font-bold text-slate-950">Details</h4>
+                    <p className="mt-1 text-xs text-slate-500">Seller contact and product condition.</p>
+                  </div>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <InputField
+                      label="Contact Phone"
+                      value={formData.contact_phone}
+                      onChange={(value) => setFormData((prev) => ({ ...prev, contact_phone: value }))}
+                      placeholder="e.g. +233 xxx xxx xxx"
+                    />
+                    <SelectField
+                      label="Condition"
+                      value={formData.condition}
+                      onChange={(value) => setFormData((prev) => ({ ...prev, condition: value }))}
+                      options={[
+                        { value: 'New', label: 'New' },
+                        { value: 'Like New', label: 'Like New' },
+                        { value: 'Good', label: 'Good' },
+                        { value: 'Fair', label: 'Fair' },
+                        { value: 'Needs Repair', label: 'Needs Repair' },
+                      ]}
+                      placeholder="Select condition"
+                    />
+                    <SelectField
+                      label="Warranty"
+                      value={formData.warranty}
+                      onChange={(value) => setFormData((prev) => ({ ...prev, warranty: value }))}
+                      options={[
+                        { value: 'No', label: 'No Warranty' },
+                        { value: 'Yes', label: 'Has Warranty' },
+                      ]}
+                      placeholder="Select warranty"
+                    />
+                    {formData.warranty === 'Yes' && (
+                      <InputField
+                        label="Warranty Period"
+                        value={formData.warranty_period}
+                        onChange={(value) => setFormData((prev) => ({ ...prev, warranty_period: value }))}
+                        placeholder="e.g. 1 year, 6 months"
+                      />
+                    )}
+                  </div>
+                </section>
+
+                <section className="space-y-4 border-t border-slate-200 pt-5">
+                  <div>
+                    <h4 className="text-sm font-bold text-slate-950">Description</h4>
+                    <p className="mt-1 text-xs text-slate-500">Add details buyers need before contacting you.</p>
+                  </div>
+                  <TextAreaField
+                    label="Description"
+                    value={formData.description}
+                    onChange={(value) => setFormData((prev) => ({ ...prev, description: value }))}
+                    rows={5}
+                    placeholder="Detailed product description..."
+                  />
+                  <TextAreaField
+                    label="Features / Specifications"
+                    value={formData.features}
+                    onChange={(value) => setFormData((prev) => ({ ...prev, features: value }))}
+                    rows={3}
+                    placeholder="e.g. High growth assurance, pesticide free, sealed pack"
+                  />
+                </section>
+
+                <section className="space-y-4 border-t border-slate-200 pt-5">
+                  <div>
+                    <h4 className="text-sm font-bold text-slate-950">Images</h4>
+                    <p className="mt-1 text-xs text-slate-500">First image becomes the main product image.</p>
+                  </div>
+                  <CldUploadWidget
+                    uploadPreset={config.cloudinary.uploadPreset}
+                    config={{
+                      cloud: {
+                        cloudName: config.cloudinary.cloudName,
+                      },
+                    }}
+                    onSuccess={(result: any) => {
+                      if (result.event === 'success') {
+                        const imageUrl = result.info.secure_url
+                        setFormData((prev) =>
+                          prev.image_urls.includes(imageUrl)
+                            ? prev
+                            : { ...prev, image_urls: [...prev.image_urls, imageUrl] }
+                        )
+                      }
+                    }}
+                    options={{
+                      sources: ['local', 'url', 'camera'],
+                      multiple: true,
+                      maxFiles: 10,
+                    }}
+                  >
+                    {({ open }: any) => (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (typeof open === 'function') {
+                            open()
+                          } else {
+                            alert('Upload widget is still loading. Please try again in a moment.')
+                          }
+                        }}
+                        className="flex w-full items-center justify-center rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm font-semibold text-blue-700 shadow-sm transition hover:bg-blue-100"
+                      >
+                        Upload Images from Cloudinary
+                      </button>
+                    )}
+                  </CldUploadWidget>
+
+                  {formData.image_urls.length > 0 && (
+                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                      {formData.image_urls.map((url, index) => (
+                        <div key={url} className="overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
+                          <img
+                            src={url}
+                            alt={`Preview ${index + 1}`}
+                            className="h-24 w-full object-cover"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = 'https://via.placeholder.com/160?text=Image'
+                            }}
                           />
-                          <select
-                            value={formData.category_id}
-                            onChange={(e) => setFormData({ ...formData, category_id: e.target.value })}
-                            className="mt-2 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-emerald-500 focus:bg-white focus:ring-2 focus:ring-emerald-100"
-                            aria-label="Product Category"
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveImageUrl(index)}
+                            className="w-full px-2 py-2 text-xs font-semibold text-red-700 hover:bg-red-50"
                           >
-                            <option value="">Select category</option>
-                            {filteredCategories.map((cat) => (
-                              <option key={cat.id} value={cat.id}>
-                                {cat.icon} {cat.name}
-                              </option>
-                            ))}
-                          </select>
-                          <p className="mt-1 text-xs text-slate-500">
-                            Showing {filteredCategories.length} categories
-                          </p>
+                            Remove
+                          </button>
                         </div>
-                      </div>
-
-                      <div className="flex justify-end gap-3 pt-2">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (validateBasics()) setFormStep(2)
-                          }}
-                          className="w-full rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 md:w-auto"
-                        >
-                          Next
-                        </button>
-                      </div>
+                      ))}
                     </div>
                   )}
+                </section>
+              </div>
 
-                  {/* Step 2: Details */}
-                  {formStep === 2 && (
-                    <div className="space-y-4">
-                      <div className="grid gap-4 md:grid-cols-2">
-                        <InputField
-                          label="Contact Phone"
-                          value={formData.contact_phone}
-                          onChange={(value) => setFormData({ ...formData, contact_phone: value })}
-                          placeholder="e.g. +233 xxx xxx xxx"
-                        />
-                        <SelectField
-                          label="Condition"
-                          value={formData.condition}
-                          onChange={(value) => setFormData({ ...formData, condition: value })}
-                          options={[
-                            { value: 'New', label: 'New' },
-                            { value: 'Like New', label: 'Like New' },
-                            { value: 'Good', label: 'Good' },
-                            { value: 'Fair', label: 'Fair' },
-                            { value: 'Needs Repair', label: 'Needs Repair' },
-                          ]}
-                          placeholder="Select condition"
-                        />
-                        <SelectField
-                          label="Warranty"
-                          value={formData.warranty}
-                          onChange={(value) => setFormData({ ...formData, warranty: value })}
-                          options={[
-                            { value: 'No', label: 'No Warranty' },
-                            { value: 'Yes', label: 'Has Warranty' },
-                          ]}
-                          placeholder="Select warranty"
-                        />
-                        {formData.warranty === 'Yes' && (
-                          <InputField
-                            label="Warranty Period"
-                            value={formData.warranty_period}
-                            onChange={(value) => setFormData({ ...formData, warranty_period: value })}
-                            placeholder="e.g. 1 year, 6 months"
-                          />
-                        )}
-                      </div>
-
-                      <div className="flex justify-between gap-3 pt-2">
-                        <button
-                          type="button"
-                          onClick={() => setFormStep(1)}
-                          className="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 md:w-auto"
-                        >
-                          Back
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setFormStep(3)}
-                          className="w-full rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 md:w-auto"
-                        >
-                          Next
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Step 3: Media & description */}
-                  {formStep === 3 && (
-                    <div className="space-y-4">
-                      <div>
-                        <label className="mb-1 block text-sm font-medium text-slate-700">Product Images</label>
-
-                        {/* Use a safe check for open */}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (typeof open === 'function') {
-                              open()
-                            } else {
-                              alert('Upload widget is still loading. Please try again in a moment.')
-                            }
-                          }}
-                          className="flex w-full items-center justify-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm font-semibold text-blue-700 shadow-sm transition hover:bg-blue-100"
-                        >
-                          <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                          </svg>
-                          Upload Images from Cloudinary
-                        </button>
-
-                        <p className="mt-2 text-xs text-slate-500">
-                          First image will be used as the main product image. You can upload multiple images.
-                        </p>
-
-                        {formData.image_urls.length > 0 && (
-                          <div className="mt-3 space-y-2">
-                            {formData.image_urls.map((url, index) => (
-                              <div
-                                key={index}
-                                className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 p-2"
-                              >
-                                <img
-                                  src={url}
-                                  alt={`Preview ${index + 1}`}
-                                  className="h-10 w-10 rounded object-cover"
-                                  onError={(e) => {
-                                    (e.target as HTMLImageElement).src = 'https://via.placeholder.com/40?text=?'
-                                  }}
-                                />
-                                <span className="flex-1 truncate text-xs text-slate-600">{url}</span>
-                                <button
-                                  type="button"
-                                  onClick={() => handleRemoveImageUrl(index)}
-                                  className="rounded bg-red-600 px-2 py-1 text-xs font-semibold text-white hover:bg-red-700"
-                                >
-                                  ✕
-                                </button>
-                              </div>
-                            ))}
-                            <p className="text-xs font-medium text-emerald-700">
-                              {formData.image_urls.length} image(s) added
-                            </p>
-                          </div>
-                        )}
-                      </div>
-
-                      <TextAreaField
-                        label="Description"
-                        value={formData.description}
-                        onChange={(value) => setFormData({ ...formData, description: value })}
-                        rows={3}
-                        placeholder="Detailed product description..."
-                      />
-
-                      <TextAreaField
-                        label="Features / Specifications"
-                        value={formData.features}
-                        onChange={(value) => setFormData({ ...formData, features: value })}
-                        rows={3}
-                        placeholder="e.g. - High quality\n- Fresh produce\n- Pesticide free"
-                      />
-
-                      <div className="flex justify-between gap-3 pt-2">
-                        <button
-                          type="button"
-                          onClick={() => setFormStep(2)}
-                          className="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 md:w-auto"
-                        >
-                          Back
-                        </button>
-                        <button
-                          type="submit"
-                          disabled={saving}
-                          className="w-full rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60 md:w-auto"
-                        >
-                          {saving
-                            ? 'Saving...'
-                            : formMode === 'edit'
-                              ? 'Save changes'
-                              : 'Create Product'}
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </>
-              )}
-            </CldUploadWidget>
-          </form>
+              <div className="border-t border-slate-200 bg-white px-4 py-4 sm:px-6">
+                <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      resetProductForm()
+                      setShowForm(false)
+                    }}
+                    className="rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={saving}
+                    className="rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {saving ? 'Saving...' : formMode === 'edit' ? 'Save changes' : 'Create Product'}
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
         </div>
       )}
 
