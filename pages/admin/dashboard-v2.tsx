@@ -266,6 +266,8 @@ function ProductsTab({ admin }: { admin: Admin | null }) {
   const [filteredCategories, setFilteredCategories] = useState<any[]>([])
   const [categorySearch, setCategorySearch] = useState('')
   const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [formStep, setFormStep] = useState(1)
   const [formMode, setFormMode] = useState<'create' | 'edit'>('create')
@@ -339,6 +341,7 @@ function ProductsTab({ admin }: { admin: Admin | null }) {
   }
 
   const resetProductForm = () => {
+    setSaveError(null)
     setFormData({
       title: '',
       description: '',
@@ -360,56 +363,60 @@ function ProductsTab({ admin }: { admin: Admin | null }) {
 
   const handleAddProduct = async (e: any) => {
     e.preventDefault()
+    setSaving(true)
+    setSaveError(null)
 
     const mainImageUrl =
       formData.image_urls.length > 0
         ? formData.image_urls[0]
         : 'https://via.placeholder.com/300x200?text=Product+Image'
 
-    const { data: productData, error: productError } = await supabase
-      .from('products')
-      .insert([
-        {
-          title: formData.title,
-          description: formData.description,
-          price: parseFloat(formData.price),
-          category_id: formData.category_id,
-          location: formData.location,
-          image_url: mainImageUrl,
-          condition: formData.condition,
-          warranty: formData.warranty,
-          warranty_period: formData.warranty_period,
-          features: formData.features,
-          contact_phone: formData.contact_phone,
-          created_by: admin?.id || null,
-        },
-      ])
-      .select()
-
-    if (!productError && productData && productData[0]) {
-      const productId = productData[0].id
-
-      for (const imageUrl of formData.image_urls) {
-        await supabase.from('product_images').insert([
+    try {
+      const { data: productData, error: productError } = await supabase
+        .from('products')
+        .insert([
           {
-            product_id: productId,
-            image_url: imageUrl,
+            title: formData.title.trim(),
+            description: formData.description.trim(),
+            price: Number(formData.price),
+            category_id: formData.category_id || null,
+            location: formData.location.trim(),
+            image_url: mainImageUrl,
+            condition: formData.condition,
+            warranty: formData.warranty,
+            warranty_period: formData.warranty_period.trim(),
+            features: formData.features.trim(),
+            contact_phone: formData.contact_phone.trim(),
+            created_by: admin?.id || null,
           },
         ])
+        .select()
+
+      if (productError) {
+        setSaveError(productError.message)
+        return
+      }
+
+      if (productData?.[0]?.id) {
+        await saveProductImages(productData[0].id, formData.image_urls)
       }
 
       resetProductForm()
       setShowForm(false)
       setLoading(true)
       fetchProducts()
-    } else if (productError) {
-      alert('Error creating product: ' + productError.message)
+    } catch (error: any) {
+      setSaveError(error.message || 'Unable to create product')
+    } finally {
+      setSaving(false)
     }
   }
 
   const handleUpdateProduct = async (e: any) => {
     e.preventDefault()
     if (!editingProduct) return
+    setSaving(true)
+    setSaveError(null)
 
     const mainImageUrl =
       formData.image_urls.length > 0
@@ -417,43 +424,69 @@ function ProductsTab({ admin }: { admin: Admin | null }) {
         : editingProduct.image_url ||
         'https://via.placeholder.com/300x200?text=Product+Image'
 
-    const { error: updateError } = await supabase
-      .from('products')
-      .update({
-        title: formData.title,
-        description: formData.description,
-        price: parseFloat(formData.price),
-        category_id: formData.category_id,
-        location: formData.location,
-        image_url: mainImageUrl,
-        condition: formData.condition,
-        warranty: formData.warranty,
-        warranty_period: formData.warranty_period,
-        features: formData.features,
-        contact_phone: formData.contact_phone,
-      })
-      .eq('id', editingProduct.id)
+    try {
+      const { error: updateError } = await supabase
+        .from('products')
+        .update({
+          title: formData.title.trim(),
+          description: formData.description.trim(),
+          price: Number(formData.price),
+          category_id: formData.category_id || null,
+          location: formData.location.trim(),
+          image_url: mainImageUrl,
+          condition: formData.condition,
+          warranty: formData.warranty,
+          warranty_period: formData.warranty_period.trim(),
+          features: formData.features.trim(),
+          contact_phone: formData.contact_phone.trim(),
+        })
+        .eq('id', editingProduct.id)
 
-    if (updateError) {
-      alert('Error updating product: ' + updateError.message)
+      if (updateError) {
+        setSaveError(updateError.message)
+        return
+      }
+
+      await replaceProductImages(editingProduct.id, formData.image_urls)
+
+      resetProductForm()
+      setShowForm(false)
+      setLoading(true)
+      fetchProducts()
+    } catch (error: any) {
+      setSaveError(error.message || 'Unable to update product')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const saveProductImages = async (productId: string, imageUrls: string[]) => {
+    if (imageUrls.length === 0) return
+
+    const { error } = await supabase.from('product_images').insert(
+      imageUrls.map((imageUrl) => ({
+        product_id: productId,
+        image_url: imageUrl,
+      }))
+    )
+
+    if (error && error.code !== '42P01') {
+      console.warn('Unable to save product image gallery:', error.message)
+    }
+  }
+
+  const replaceProductImages = async (productId: string, imageUrls: string[]) => {
+    const { error: deleteError } = await supabase
+      .from('product_images')
+      .delete()
+      .eq('product_id', productId)
+
+    if (deleteError && deleteError.code !== '42P01') {
+      console.warn('Unable to clear product image gallery:', deleteError.message)
       return
     }
 
-    await supabase.from('product_images').delete().eq('product_id', editingProduct.id)
-
-    for (const imageUrl of formData.image_urls) {
-      await supabase.from('product_images').insert([
-        {
-          product_id: editingProduct.id,
-          image_url: imageUrl,
-        },
-      ])
-    }
-
-    resetProductForm()
-    setShowForm(false)
-    setLoading(true)
-    fetchProducts()
+    await saveProductImages(productId, imageUrls)
   }
 
   const handleSubmitProduct = async (e: any) => {
@@ -511,10 +544,14 @@ function ProductsTab({ admin }: { admin: Admin | null }) {
       image_url_input: '',
     })
 
-    const { data: imageRows } = await supabase
+    const { data: imageRows, error: imageError } = await supabase
       .from('product_images')
       .select('*')
       .eq('product_id', product.id)
+
+    if (imageError && imageError.code !== '42P01') {
+      console.warn('Unable to load product image gallery:', imageError.message)
+    }
 
     if (imageRows && imageRows.length > 0) {
       setFormData((prev) => ({
@@ -553,6 +590,12 @@ function ProductsTab({ admin }: { admin: Admin | null }) {
       {showForm && (
         <div className="rounded-lg bg-white p-4 shadow-sm md:p-6">
           <form onSubmit={handleSubmitProduct} className="space-y-4 md:space-y-6">
+            {saveError && (
+              <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                {saveError}
+              </div>
+            )}
+
             {/* Step indicator */}
             <div className="flex items-center justify-between text-xs font-medium text-gray-600">
               <div className="flex gap-2">
@@ -833,9 +876,14 @@ function ProductsTab({ admin }: { admin: Admin | null }) {
                         </button>
                         <button
                           type="submit"
+                          disabled={saving}
                           className="w-full rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-green-700 md:w-auto"
                         >
-                          {formMode === 'edit' ? 'Save changes' : 'Create Product'}
+                          {saving
+                            ? 'Saving...'
+                            : formMode === 'edit'
+                              ? 'Save changes'
+                              : 'Create Product'}
                         </button>
                       </div>
                     </div>
@@ -1623,6 +1671,9 @@ function ProductCard({
   onDeleted: () => void
   onEdit: (product: any) => void
 }) {
+  const price = Number(product.price)
+  const displayPrice = Number.isFinite(price) ? price.toLocaleString() : '0'
+
   const handleDelete = async () => {
     if (!confirm('Delete this product?')) return
 
@@ -1648,7 +1699,7 @@ function ProductCard({
           {product.title}
         </h3>
         <p className="mt-1 text-sm font-semibold text-green-600">
-          GHS ₵{parseFloat(product.price).toLocaleString()}
+          GHS ₵{displayPrice}
         </p>
         {product.location && (
           <p className="mt-1 text-sm text-gray-600">{product.location}</p>
