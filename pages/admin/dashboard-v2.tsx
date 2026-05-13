@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/router'
 import { supabase } from '@/lib/supabase'
 import { CldUploadWidget } from 'next-cloudinary'
@@ -270,6 +270,7 @@ function TabPill({
 }
 
 function ProductsTab({ admin }: { admin: Admin | null }) {
+  const formPanelRef = useRef<HTMLDivElement | null>(null)
   const [products, setProducts] = useState<any[]>([])
   const [categories, setCategories] = useState<any[]>([])
   const [filteredCategories, setFilteredCategories] = useState<any[]>([])
@@ -370,8 +371,42 @@ function ProductsTab({ admin }: { admin: Admin | null }) {
     setEditingProduct(null)
   }
 
+  const scrollFormIntoView = () => {
+    setTimeout(() => {
+      formPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 0)
+  }
+
+  const validateBasics = () => {
+    if (!formData.title.trim()) {
+      setSaveError('Enter a product title before continuing.')
+      setFormStep(1)
+      scrollFormIntoView()
+      return false
+    }
+
+    const price = Number(formData.price)
+    if (!Number.isFinite(price) || price <= 0) {
+      setSaveError('Enter a valid product price greater than 0.')
+      setFormStep(1)
+      scrollFormIntoView()
+      return false
+    }
+
+    if (!formData.location.trim()) {
+      setSaveError('Enter the product location before continuing.')
+      setFormStep(1)
+      scrollFormIntoView()
+      return false
+    }
+
+    setSaveError(null)
+    return true
+  }
+
   const handleAddProduct = async (e: any) => {
     e.preventDefault()
+    if (!validateBasics()) return
     setSaving(true)
     setSaveError(null)
 
@@ -424,6 +459,7 @@ function ProductsTab({ admin }: { admin: Admin | null }) {
   const handleUpdateProduct = async (e: any) => {
     e.preventDefault()
     if (!editingProduct) return
+    if (!validateBasics()) return
     setSaving(true)
     setSaveError(null)
 
@@ -535,6 +571,7 @@ function ProductsTab({ admin }: { admin: Admin | null }) {
     setEditingProduct(product)
     setShowForm(true)
     setFormStep(1)
+    scrollFormIntoView()
     setFormData({
       title: product.title || '',
       description: product.description || '',
@@ -598,6 +635,7 @@ function ProductsTab({ admin }: { admin: Admin | null }) {
                 } else {
                   resetProductForm()
                   setShowForm(true)
+                  scrollFormIntoView()
                 }
               }}
               className="w-full rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 sm:w-auto"
@@ -609,7 +647,7 @@ function ProductsTab({ admin }: { admin: Admin | null }) {
       </div>
 
       {showForm && (
-        <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm md:p-6">
+        <div ref={formPanelRef} className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm md:p-6">
           <form onSubmit={handleSubmitProduct} className="space-y-4 md:space-y-6">
             {saveError && (
               <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
@@ -744,7 +782,9 @@ function ProductsTab({ admin }: { admin: Admin | null }) {
                       <div className="flex justify-end gap-3 pt-2">
                         <button
                           type="button"
-                          onClick={() => setFormStep(2)}
+                          onClick={() => {
+                            if (validateBasics()) setFormStep(2)
+                          }}
                           className="w-full rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 md:w-auto"
                         >
                           Next
