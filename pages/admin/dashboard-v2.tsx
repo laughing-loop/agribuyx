@@ -646,6 +646,11 @@ function ProductsTab({ admin }: { admin: Admin | null }) {
 
             <CldUploadWidget
               uploadPreset={config.cloudinary.uploadPreset}
+              config={{
+                cloud: {
+                  cloudName: config.cloudinary.cloudName,
+                },
+              }}
               onSuccess={(result: any) => {
                 if (result.event === 'success') {
                   const imageUrl = result.info.secure_url
@@ -658,7 +663,6 @@ function ProductsTab({ admin }: { admin: Admin | null }) {
                 }
               }}
               options={{
-                cloudName: config.cloudinary.cloudName,
                 sources: ['local', 'url', 'camera'],
                 multiple: true,
                 maxFiles: 10,
