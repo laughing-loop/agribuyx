@@ -14,6 +14,8 @@
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
+import type { GetServerSideProps } from 'next'
+import { createClient } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
 import { getThumbnailUrl } from '@/lib/cloudinary'
 import MarketplaceFooter from '@/components/MarketplaceFooter'
@@ -69,20 +71,76 @@ function asText(value: unknown) {
   return typeof value === 'string' ? value : ''
 }
 
+// ─── SSR Props ────────────────────────────────────────────────────────────────
+
+interface PageProps {
+  initialProducts: Product[]
+  initialCategories: Category[]
+  initialBlogPosts: BlogPost[]
+  initialSocialLinks: Record<string, string>
+}
+
+export const getServerSideProps: GetServerSideProps<PageProps> = async () => {
+  const server = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
+
+  const [productsRes, categoriesRes, blogRes, socialRes] = await Promise.all([
+    server.from('products').select('*').order('created_at', { ascending: false }).limit(60),
+    server.from('categories').select('*').order('name', { ascending: true }),
+    server.from('blog_posts').select('id,title,slug,summary,image_url,created_at').order('created_at', { ascending: false }).limit(5),
+    server.from('site_settings').select('key,value'),
+  ])
+
+  const socialMap: Record<string, string> = {}
+  if (socialRes.data) {
+    socialRes.data.forEach((row: any) => { if (row.key) socialMap[row.key] = row.value || '' })
+  }
+
+  return {
+    props: {
+      initialProducts: (productsRes.data || []) as Product[],
+      initialCategories: (categoriesRes.data || []) as Category[],
+      initialBlogPosts: (blogRes.data || []) as BlogPost[],
+      initialSocialLinks: socialMap,
+    },
+  }
+}
+
+// ─── ItemList JSON-LD ─────────────────────────────────────────────────────────
+
+function itemListSchema(products: Product[]) {
+  const base = process.env.NEXT_PUBLIC_APP_URL || 'https://agribuyx.com'
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'ItemList',
+    name: 'Agricultural Products in Ghana — AgriBuyX Marketplace',
+    url: `${base}/products`,
+    numberOfItems: products.length,
+    itemListElement: products.slice(0, 50).map((p, idx) => ({
+      '@type': 'ListItem',
+      position: idx + 1,
+      url: p.slug ? `${base}/products/${p.slug}` : `${base}/products/${p.id}`,
+      name: p.title,
+    })),
+  }
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export default function Products() {
-  const [products, setProducts] = useState<Product[]>([])
-  const [categories, setCategories] = useState<Category[]>([])
+export default function Products({ initialProducts, initialCategories, initialBlogPosts, initialSocialLinks }: PageProps) {
+  const [products, setProducts] = useState<Product[]>(initialProducts)
+  const [categories, setCategories] = useState<Category[]>(initialCategories)
   const [selectedCategory, setSelectedCategory] = useState<string>('')
   const [searchQuery, setSearchQuery] = useState<string>('')
   const [locations, setLocations] = useState<string[]>([])
   const [selectedLocation, setSelectedLocation] = useState<string>('')
-  const [loading, setLoading] = useState(true)
-  const [blogPosts, setBlogPosts] = useState<BlogPost[]>([])
-  const [blogLoading, setBlogLoading] = useState(true)
-  const [socialLinks, setSocialLinks] = useState<{ [key: string]: string }>({})
-  const [socialLoading, setSocialLoading] = useState(true)
+  const [loading, setLoading] = useState(false)  // false: SSR data already present
+  const [blogPosts, setBlogPosts] = useState<BlogPost[]>(initialBlogPosts)
+  const [blogLoading, setBlogLoading] = useState(false)
+  const [socialLinks, setSocialLinks] = useState<{ [key: string]: string }>(initialSocialLinks)
+  const [socialLoading, setSocialLoading] = useState(false)
   const [categorySearch, setCategorySearch] = useState<string>('')
   const [showAllCategories, setShowAllCategories] = useState<boolean>(false)
   const [activeMainCategoryId, setActiveMainCategoryId] = useState<string | null>(null)
@@ -97,6 +155,7 @@ export default function Products() {
   useEffect(() => { fetchProducts() }, [selectedCategory, categories])
   useEffect(() => { fetchCategories() }, [])
   useEffect(() => { fetchBlogPosts(); fetchSocialLinks() }, [])
+  // Note: initial data comes from SSR props above; useEffect re-fetches for interactivity (filters, etc.)
 
   useEffect(() => {
     if (!activeMainCategoryId) return
@@ -204,6 +263,9 @@ export default function Products() {
     Boolean(socialLinks['tiktok_url']) ||
     Boolean(socialLinks['facebook_url'])
 
+  // ── JSON-LD schema ──────────────────────────────────────────────────────
+  const allDisplayedProducts = filteredProducts.slice(0, visibleCount)
+
   const handleSupportSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!supportForm.email || !supportForm.message) {
@@ -244,6 +306,7 @@ export default function Products() {
       />
       <JsonLd schema={websiteSchema()} id="website-schema" />
       <JsonLd schema={organizationSchema()} id="org-schema" />
+      <JsonLd schema={itemListSchema(products)} id="itemlist-schema" />
 
       {/* Skip to content */}
       <a href="#marketplace-main" className="skip-to-content">Skip to marketplace</a>
