@@ -1,6 +1,13 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
     reactStrictMode: true,
+
+    // Allow next/image to optimise images from Cloudinary
+    images: {
+        domains: ['res.cloudinary.com'],
+        formats: ['image/avif', 'image/webp'],
+    },
+
     webpack: (config, { isServer }) => {
         // Fix for cloudinary package trying to use Node.js modules in the browser
         if (!isServer) {

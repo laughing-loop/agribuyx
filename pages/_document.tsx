@@ -10,19 +10,22 @@ class MyDocument extends Document {
     return (
       <Html lang="en">
         <Head>
+          {/* Favicon */}
           <link rel="icon" href="/favicon.svg" />
+          <link rel="shortcut icon" href="/favicon.svg" />
+
+          {/* Fonts — preconnect for performance */}
           <link rel="preconnect" href="https://fonts.googleapis.com" />
           <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
           <link
-            href="https://fonts.googleapis.com/css2?family=Host+Grotesk:wght@400;500;600;700&display=swap"
+            href="https://fonts.googleapis.com/css2?family=Host+Grotesk:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap"
             rel="stylesheet"
           />
-          <meta property="og:site_name" content="AgriBuyX" />
-          <meta property="og:title" content="AgriBuyX – Fresh Agricultural Products" />
-          <meta property="og:type" content="website" />
-          <meta property="og:image" content="/OG_image.png" />
+
+          {/* Charset + viewport handled by Next.js automatically */}
+          {/* OG, Twitter, canonical, title, description — handled per-page by <SEO> component */}
         </Head>
-        <body className="bg-gray-50">
+        <body>
           <Main />
           <NextScript />
         </body>

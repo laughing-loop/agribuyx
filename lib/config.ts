@@ -66,12 +66,20 @@ export const appConfig = {
     isProduction: process.env.NODE_ENV === 'production',
 } as const
 
+// SEO / Webmaster Verification
+// Set these in Vercel environment variables — never hardcode
+export const seoConfig = {
+    googleSiteVerification: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION || '',
+    bingSiteVerification: process.env.NEXT_PUBLIC_BING_SITE_VERIFICATION || '',
+} as const
+
 // Export all configs
 export const config = {
     supabase: supabaseConfig,
     cloudinary: cloudinaryConfig,
     email: emailConfig,
     app: appConfig,
+    seo: seoConfig,
 } as const
 
 // Type-safe config access

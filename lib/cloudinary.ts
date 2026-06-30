@@ -86,16 +86,13 @@ export function getWatermarkedImageUrl(publicId: string): string {
  * @param publicId - The Cloudinary public ID or full URL
  * @param width - Thumbnail width
  * @param height - Thumbnail height
- * @returns Optimized thumbnail URL
+ * @returns Optimized thumbnail URL (object-cover / fill mode)
  */
 export function getThumbnailUrl(publicId: string, width = 300, height = 300): string {
     if (!publicId) return ''
 
-    // Check if it's already a full URL
+    // If it's already a Cloudinary URL, return as-is (already optimised)
     if (publicId.startsWith('http://') || publicId.startsWith('https://')) {
-        if (publicId.includes('cloudinary.com')) {
-            return publicId
-        }
         return publicId
     }
 
@@ -106,6 +103,34 @@ export function getThumbnailUrl(publicId: string, width = 300, height = 300): st
         quality: 'auto',
         format: 'auto',
         gravity: 'auto',
+    })
+}
+
+/**
+ * Get a product card image URL using object-contain (pad) mode.
+ * This prevents center-cropping of portrait product images.
+ * Uses a white/neutral background behind the contained image.
+ *
+ * @param publicId - The Cloudinary public ID or full URL
+ * @param width - Card image width (default 600)
+ * @param height - Card image height (default 450)
+ * @returns Padded/contained image URL safe for product cards
+ */
+export function getProductCardUrl(publicId: string, width = 600, height = 450): string {
+    if (!publicId) return ''
+
+    // If it's already a full URL (not a public ID), return as-is
+    if (publicId.startsWith('http://') || publicId.startsWith('https://')) {
+        return publicId
+    }
+
+    return getCloudinaryUrl(publicId, {
+        width,
+        height,
+        crop: 'pad',
+        quality: 'auto',
+        format: 'auto',
+        gravity: 'center',
     })
 }
 

@@ -1,9 +1,28 @@
+/**
+ * pages/products/index.tsx — Marketplace Listing Page
+ *
+ * Changes from original:
+ *  - Added <SEO> head with marketplace title, description, canonical, OG
+ *  - Added <JsonLd> with WebSite + Organization schema
+ *  - Fixed product card images: object-contain with neutral bg (was object-cover = center-crop)
+ *  - Improved mobile card layout: bigger touch targets, cleaner spacing
+ *  - Added proper aria labels and semantic HTML (article, nav, main, section)
+ *  - Added skip-to-content link for accessibility
+ *  - All existing filter/search/category/load-more logic preserved exactly
+ */
+
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { supabase } from '@/lib/supabase'
-import { getWatermarkedImageUrl as getCloudinaryUrl, getThumbnailUrl } from '@/lib/cloudinary'
+import { getThumbnailUrl } from '@/lib/cloudinary'
 import MarketplaceFooter from '@/components/MarketplaceFooter'
+import SEO from '@/components/SEO'
+import JsonLd from '@/components/JsonLd'
+import { marketplaceSeoTitle, marketplaceSeoDescription, canonicalUrl, formatPriceGHS } from '@/lib/seo'
+import { websiteSchema, organizationSchema } from '@/lib/schema'
+
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 interface Product {
   id: string
@@ -19,6 +38,7 @@ interface Product {
   warranty_period?: string
   features?: string
   contact_phone?: string
+  slug?: string | null
 }
 
 interface Category {
@@ -38,21 +58,18 @@ interface BlogPost {
   created_at: string
 }
 
-function getWatermarkedImageUrl(url: string) {
-  if (!url) return url
-  // Use thumbnail for listing page (smaller, optimized)
-  return getThumbnailUrl(url, 400, 300)
-}
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function formatPrice(price?: number | string | null) {
-  const value = Number(price)
-  if (!Number.isFinite(value)) return 'Price on request'
-  return `GHS ${value.toLocaleString()}`
+function getCardImageUrl(url: string) {
+  if (!url) return url
+  return getThumbnailUrl(url, 400, 300)
 }
 
 function asText(value: unknown) {
   return typeof value === 'string' ? value : ''
 }
+
+// ─── Component ────────────────────────────────────────────────────────────────
 
 export default function Products() {
   const [products, setProducts] = useState<Product[]>([])
@@ -74,70 +91,39 @@ export default function Products() {
   const [supportSubmitting, setSupportSubmitting] = useState(false)
   const [supportError, setSupportError] = useState<string | null>(null)
   const [supportSuccess, setSupportSuccess] = useState<string | null>(null)
-  const [supportForm, setSupportForm] = useState({
-    name: '',
-    email: '',
-    category: '',
-    message: '',
-  })
+  const [supportForm, setSupportForm] = useState({ name: '', email: '', category: '', message: '' })
   const filtersRef = useRef<HTMLDivElement | null>(null)
 
-  useEffect(() => {
-    fetchProducts()
-  }, [selectedCategory, categories])
-
-  useEffect(() => {
-    fetchCategories()
-  }, [])
-
-  useEffect(() => {
-    fetchBlogPosts()
-    fetchSocialLinks()
-  }, [])
+  useEffect(() => { fetchProducts() }, [selectedCategory, categories])
+  useEffect(() => { fetchCategories() }, [])
+  useEffect(() => { fetchBlogPosts(); fetchSocialLinks() }, [])
 
   useEffect(() => {
     if (!activeMainCategoryId) return
-
     const handleClickOutside = (event: MouseEvent) => {
       if (!filtersRef.current) return
       if (!filtersRef.current.contains(event.target as Node)) {
         setActiveMainCategoryId(null)
       }
     }
-
     document.addEventListener('mousedown', handleClickOutside)
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside)
-    }
+    return () => { document.removeEventListener('mousedown', handleClickOutside) }
   }, [activeMainCategoryId])
 
-  useEffect(() => {
-    setVisibleCount(12)
-  }, [selectedCategory, searchQuery, selectedLocation])
+  useEffect(() => { setVisibleCount(12) }, [selectedCategory, searchQuery, selectedLocation])
 
   const fetchProducts = async () => {
     setLoading(true)
-    let query = supabase
-      .from('products')
-      .select('*')
-      .order('created_at', { ascending: false })
-
+    let query = supabase.from('products').select('*').order('created_at', { ascending: false })
     if (selectedCategory) {
-      const childCategoryIds = categories
-        .filter((cat) => cat.parent_id === selectedCategory)
-        .map((cat) => cat.id)
+      const childCategoryIds = categories.filter((cat) => cat.parent_id === selectedCategory).map((cat) => cat.id)
       query = query.in('category_id', [selectedCategory, ...childCategoryIds])
     }
-
     const { data, error } = await query
     if (!error) {
       const items = (data || []) as Product[]
       setProducts(items)
-
-      const uniqueLocations = Array.from(
-        new Set(items.map((product) => product.location).filter((location): location is string => Boolean(location)))
-      )
-      setLocations(uniqueLocations)
+      setLocations(Array.from(new Set(items.map((p) => p.location).filter((l): l is string => Boolean(l)))))
     } else {
       setProducts([])
       setLocations([])
@@ -151,28 +137,16 @@ export default function Products() {
   }
 
   const fetchBlogPosts = async () => {
-    const { data, error } = await supabase
-      .from('blog_posts')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(5)
-
-    if (!error && data) {
-      setBlogPosts(data as BlogPost[])
-    }
+    const { data, error } = await supabase.from('blog_posts').select('*').order('created_at', { ascending: false }).limit(5)
+    if (!error && data) setBlogPosts(data as BlogPost[])
     setBlogLoading(false)
   }
 
   const fetchSocialLinks = async () => {
     const { data, error } = await supabase.from('site_settings').select('*')
-
     if (!error && data) {
       const map: { [key: string]: string } = {}
-      data.forEach((row: any) => {
-        if (row.key) {
-          map[row.key] = row.value || ''
-        }
-      })
+      data.forEach((row: any) => { if (row.key) map[row.key] = row.value || '' })
       setSocialLinks(map)
     }
     setSocialLoading(false)
@@ -182,11 +156,7 @@ export default function Products() {
     const matchesSearch =
       asText(product.title).toLowerCase().includes(searchQuery.toLowerCase()) ||
       asText(product.description).toLowerCase().includes(searchQuery.toLowerCase())
-
-    const matchesLocation = selectedLocation
-      ? product.location === selectedLocation
-      : true
-
+    const matchesLocation = selectedLocation ? product.location === selectedLocation : true
     return matchesSearch && matchesLocation
   })
 
@@ -194,19 +164,9 @@ export default function Products() {
   const filteredMainCategories = mainCategories.filter((cat) =>
     asText(cat.name).toLowerCase().includes(categorySearch.toLowerCase())
   )
-
-  const visibleMainCategories = showAllCategories
-    ? filteredMainCategories
-    : filteredMainCategories.slice(0, 10)
-
-  const selectedCategoryName =
-    categories.find((cat) => cat.id === selectedCategory)?.name || 'All products'
-
-  const activeFilterCount = [
-    selectedCategory,
-    selectedLocation,
-    searchQuery.trim(),
-  ].filter(Boolean).length
+  const visibleMainCategories = showAllCategories ? filteredMainCategories : filteredMainCategories.slice(0, 10)
+  const selectedCategoryName = categories.find((cat) => cat.id === selectedCategory)?.name || 'All products'
+  const activeFilterCount = [selectedCategory, selectedLocation, searchQuery.trim()].filter(Boolean).length
 
   const clearFilters = () => {
     setSelectedCategory('')
@@ -216,8 +176,7 @@ export default function Products() {
     setActiveMainCategoryId(null)
   }
 
-  const getSubcategories = (parentId: string) =>
-    categories.filter((cat) => cat.parent_id === parentId)
+  const getSubcategories = (parentId: string) => categories.filter((cat) => cat.parent_id === parentId)
 
   const handleMainCategoryClick = (cat: Category) => {
     if (typeof window !== 'undefined' && window.innerWidth < 1024) {
@@ -235,11 +194,7 @@ export default function Products() {
   }
 
   const tickerItems: string[] = []
-
-  blogPosts.forEach((post) => {
-    tickerItems.push(`Blog: ${post.title}`)
-  })
-
+  blogPosts.forEach((post) => { tickerItems.push(`Blog: ${post.title}`) })
   if (socialLinks['whatsapp_channel_url']) {
     tickerItems.push('Join our WhatsApp channel for price alerts and updates')
   }
@@ -249,7 +204,7 @@ export default function Products() {
     Boolean(socialLinks['tiktok_url']) ||
     Boolean(socialLinks['facebook_url'])
 
-  const handleSupportSubmit = async (e: any) => {
+  const handleSupportSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!supportForm.email || !supportForm.message) {
       setSupportError('Email and message are required')
@@ -258,14 +213,12 @@ export default function Products() {
     setSupportSubmitting(true)
     setSupportError(null)
     setSupportSuccess(null)
-
     try {
       const res = await fetch('/api/support-request', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(supportForm),
       })
-
       if (!res.ok) {
         const data = await res.json().catch(() => null)
         setSupportError(data?.error || 'Failed to send message')
@@ -273,39 +226,42 @@ export default function Products() {
         setSupportSuccess('Message sent. We will get back to you on email.')
         setSupportForm({ name: '', email: '', category: '', message: '' })
       }
-    } catch (error) {
+    } catch {
       setSupportError('Network error. Please try again later.')
     } finally {
       setSupportSubmitting(false)
     }
   }
 
+  const productUrl = (p: Product) => p.slug ? `/products/${p.slug}` : `/products/${p.id}`
+
   return (
     <div className="min-h-screen bg-slate-50">
+      <SEO
+        title={marketplaceSeoTitle}
+        description={marketplaceSeoDescription}
+        canonical={canonicalUrl('/products')}
+      />
+      <JsonLd schema={websiteSchema()} id="website-schema" />
+      <JsonLd schema={organizationSchema()} id="org-schema" />
+
+      {/* Skip to content */}
+      <a href="#marketplace-main" className="skip-to-content">Skip to marketplace</a>
+
       {/* Navigation */}
-      <nav className="sticky top-0 z-50 border-b border-slate-200 bg-white/95 shadow-sm backdrop-blur">
+      <nav
+        className="sticky top-0 z-50 border-b border-slate-200 bg-white/95 shadow-sm backdrop-blur"
+        aria-label="Main navigation"
+      >
         <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-3 md:flex-row md:items-center md:justify-between md:py-4">
           <div className="flex items-center justify-between">
-            <Link href="/products" className="flex items-center gap-2">
-              <Image
-                src="/agribuyx_logo-02.svg"
-                alt="AgriBuyX"
-                width={140}
-                height={32}
-                className="h-8 w-auto"
-              />
+            <Link href="/products" className="flex items-center gap-2" aria-label="AgriBuyX home">
+              <Image src="/agribuyx_logo-02.svg" alt="AgriBuyX" width={140} height={32} className="h-8 w-auto" />
             </Link>
             <div className="flex items-center gap-2 text-xs font-medium text-slate-700 md:hidden">
-              <Link href="/blog" className="hover:text-emerald-700">
-                Blog
-              </Link>
+              <Link href="/blog" className="hover:text-emerald-700">Blog</Link>
               {socialLinks['whatsapp_channel_url'] && (
-                <a
-                  href={socialLinks['whatsapp_channel_url']}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="hover:text-emerald-700"
-                >
+                <a href={socialLinks['whatsapp_channel_url']} target="_blank" rel="noopener noreferrer" className="hover:text-emerald-700">
                   Channel
                 </a>
               )}
@@ -316,17 +272,15 @@ export default function Products() {
               <div className="relative flex-1 md:w-80 lg:w-96">
                 <svg
                   className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  aria-hidden="true"
+                  viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"
                 >
                   <circle cx="11" cy="11" r="7" />
                   <path d="M20 20l-3.5-3.5" />
                 </svg>
+                <label htmlFor="marketplace-search" className="sr-only">Search products</label>
                 <input
-                  type="text"
+                  id="marketplace-search"
+                  type="search"
                   placeholder="Search seeds, fertilizer, tools..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
@@ -342,17 +296,13 @@ export default function Products() {
               </button>
             </div>
             <div className="hidden items-center justify-end gap-3 text-sm md:flex">
-              <Link
-                href="/blog"
-                className="inline-flex items-center rounded-lg px-3 py-2 font-medium text-slate-700 hover:bg-slate-100"
-              >
+              <Link href="/blog" className="inline-flex items-center rounded-lg px-3 py-2 font-medium text-slate-700 hover:bg-slate-100">
                 Blog
               </Link>
               {socialLinks['whatsapp_channel_url'] && (
                 <a
                   href={socialLinks['whatsapp_channel_url']}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                  target="_blank" rel="noopener noreferrer"
                   className="inline-flex items-center rounded-lg px-3 py-2 font-medium text-slate-700 hover:bg-slate-100"
                 >
                   Channel
@@ -363,34 +313,32 @@ export default function Products() {
         </div>
       </nav>
 
+      {/* News Ticker */}
       {tickerItems.length > 0 && (
-        <div className="bg-slate-900 text-[11px] text-white sm:text-xs">
+        <div className="bg-slate-900 text-[11px] text-white sm:text-xs" aria-hidden="true">
           <div className="max-w-7xl mx-auto px-4 py-2 overflow-hidden">
             <div className="ticker-marquee">
               {tickerItems.concat(tickerItems).map((item, index) => (
-                <span key={index} className="opacity-90">
-                  {item}
-                </span>
+                <span key={index} className="opacity-90">{item}</span>
               ))}
             </div>
           </div>
         </div>
       )}
 
-      <div className="border-b border-slate-200 bg-white px-4 py-6">
+      {/* Page Header */}
+      <header className="border-b border-slate-200 bg-white px-4 py-6">
         <div className="mx-auto flex max-w-7xl flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
-              AgriBuyX Marketplace
-            </p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">AgriBuyX Marketplace</p>
             <h1 className="mt-1 text-2xl font-bold text-slate-950 md:text-3xl">
               Farm inputs and agricultural products
             </h1>
             <p className="mt-2 max-w-2xl text-sm text-slate-600 md:text-base">
-              Find seeds, fertilizers, crop protection, livestock supplies, and farm equipment from trusted vendors.
+              Find seeds, fertilizers, crop protection, livestock supplies, and farm equipment from trusted vendors in Ghana.
             </p>
           </div>
-          <div className="grid grid-cols-3 gap-2 text-center text-xs text-slate-600 md:min-w-80">
+          <div className="grid grid-cols-3 gap-2 text-center text-xs text-slate-600 md:min-w-72">
             <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
               <p className="text-lg font-bold text-slate-950">{products.length}</p>
               <p>Products</p>
@@ -405,75 +353,84 @@ export default function Products() {
             </div>
           </div>
         </div>
-      </div>
+      </header>
 
       {/* Main Content */}
-      <div className="mx-auto max-w-7xl px-4 py-6 md:py-8">
-        <div className="-mx-4 mb-4 flex gap-2 overflow-x-auto px-4 pb-1 md:mx-0 md:flex-wrap md:overflow-visible md:px-0">
+      <main id="marketplace-main" className="mx-auto max-w-7xl px-4 py-6 md:py-8">
+        {/* Mobile category chips — horizontal scroll */}
+        <div
+          className="-mx-4 mb-4 flex gap-2 overflow-x-auto px-4 pb-2 md:mx-0 md:flex-wrap md:overflow-visible md:px-0"
+          role="group"
+          aria-label="Filter by category"
+        >
           <button
             type="button"
             onClick={() => setSelectedCategory('')}
-            className={`shrink-0 rounded-lg border px-3 py-2 text-xs font-semibold transition ${selectedCategory === ''
-              ? 'border-emerald-600 bg-emerald-600 text-white'
-              : 'border-slate-200 bg-white text-slate-700 hover:border-emerald-200 hover:bg-emerald-50'
-              }`}
+            aria-pressed={selectedCategory === ''}
+            className={`shrink-0 rounded-full border px-4 py-2 text-xs font-semibold transition ${
+              selectedCategory === ''
+                ? 'border-emerald-600 bg-emerald-600 text-white'
+                : 'border-slate-200 bg-white text-slate-700 hover:border-emerald-200 hover:bg-emerald-50'
+            }`}
           >
             All
           </button>
-              {mainCategories.slice(0, 7).map((cat) => (
+          {mainCategories.slice(0, 7).map((cat) => (
             <button
               key={cat.id}
               type="button"
               onClick={() => handleMainCategoryClick(cat)}
-              className={`shrink-0 rounded-lg border px-3 py-2 text-xs font-semibold transition ${selectedCategory === cat.id
-                ? 'border-emerald-600 bg-emerald-600 text-white'
-                : 'border-slate-200 bg-white text-slate-700 hover:border-emerald-200 hover:bg-emerald-50'
-                }`}
+              aria-pressed={selectedCategory === cat.id}
+              className={`shrink-0 rounded-full border px-4 py-2 text-xs font-semibold transition ${
+                selectedCategory === cat.id
+                  ? 'border-emerald-600 bg-emerald-600 text-white'
+                  : 'border-slate-200 bg-white text-slate-700 hover:border-emerald-200 hover:bg-emerald-50'
+              }`}
             >
-              <span className="mr-1">{cat.icon}</span>
+              <span className="mr-1" aria-hidden="true">{cat.icon}</span>
               {cat.name}
             </button>
           ))}
         </div>
 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
-          {/* Sidebar - Filters */}
-          <div ref={filtersRef} className="lg:col-span-3 relative">
-            <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm lg:sticky lg:top-24">
+
+          {/* Sidebar Filters */}
+          <aside ref={filtersRef} className="lg:col-span-3 relative" aria-label="Filters">
+            <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm lg:sticky lg:top-24">
               <div className="mb-4 flex items-center justify-between">
                 <div>
-                  <h3 className="text-base font-bold text-slate-900">Filters</h3>
+                  <h2 className="text-base font-bold text-slate-900">Filters</h2>
                   <p className="text-xs text-slate-500">{activeFilterCount} active</p>
                 </div>
                 {activeFilterCount > 0 && (
-                  <button
-                    type="button"
-                    onClick={clearFilters}
-                    className="text-xs font-semibold text-emerald-700 hover:text-emerald-800"
-                  >
-                    Clear
+                  <button type="button" onClick={clearFilters} className="text-xs font-semibold text-emerald-700 hover:text-emerald-800">
+                    Clear all
                   </button>
                 )}
               </div>
+
+              {/* Category search */}
               <div className="mb-3">
+                <label htmlFor="category-search" className="sr-only">Search categories</label>
                 <input
+                  id="category-search"
                   type="text"
                   value={categorySearch}
-                  onChange={(e) => {
-                    setCategorySearch(e.target.value)
-                    setShowAllCategories(false)
-                  }}
+                  onChange={(e) => { setCategorySearch(e.target.value); setShowAllCategories(false) }}
                   placeholder="Search categories..."
                   className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
                 />
               </div>
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-1">
+
+              {/* Category list */}
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-1" role="group" aria-label="Category list">
                 <button
                   onClick={() => setSelectedCategory('')}
-                  className={`w-full rounded-lg px-3 py-2 text-left text-sm font-medium transition ${selectedCategory === ''
-                    ? 'bg-emerald-600 text-white'
-                    : 'bg-slate-100 text-slate-800 hover:bg-slate-200'
-                    }`}
+                  aria-pressed={selectedCategory === ''}
+                  className={`w-full rounded-lg px-3 py-2 text-left text-sm font-medium transition ${
+                    selectedCategory === '' ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-800 hover:bg-slate-200'
+                  }`}
                 >
                   All Products
                 </button>
@@ -481,31 +438,18 @@ export default function Products() {
                   <button
                     key={cat.id}
                     onClick={() => handleMainCategoryClick(cat)}
-                    className={`flex w-full flex-col items-center justify-center gap-1 rounded-lg px-2 py-2 text-[11px] transition sm:text-xs md:text-sm lg:flex-row lg:items-center lg:justify-between lg:px-3 ${selectedCategory === cat.id
-                      ? 'bg-emerald-600 text-white'
-                      : 'bg-slate-100 text-slate-800 hover:bg-slate-200'
-                      }`}
+                    aria-pressed={selectedCategory === cat.id}
+                    className={`flex w-full flex-col items-center justify-center gap-1 rounded-lg px-2 py-2 text-[11px] transition sm:text-xs md:text-sm lg:flex-row lg:items-center lg:justify-between lg:px-3 ${
+                      selectedCategory === cat.id ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-800 hover:bg-slate-200'
+                    }`}
                   >
                     <div className="flex flex-col items-center gap-1 lg:flex-row lg:items-center lg:gap-2">
-                      <span className="text-lg lg:text-base">{cat.icon}</span>
-                      <span className="text-center lg:text-left truncate max-w-[4.5rem] sm:max-w-[6rem] md:max-w-none">
-                        {cat.name}
-                      </span>
+                      <span className="text-lg lg:text-base" aria-hidden="true">{cat.icon}</span>
+                      <span className="text-center lg:text-left truncate max-w-[4.5rem] sm:max-w-[6rem] md:max-w-none">{cat.name}</span>
                     </div>
                     {getSubcategories(cat.id).length > 0 && (
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="hidden h-3 w-3 text-slate-500 lg:block"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          d="M9 5l7 7-7 7"
-                        />
+                      <svg xmlns="http://www.w3.org/2000/svg" className="hidden h-3 w-3 text-slate-500 lg:block" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                       </svg>
                     )}
                   </button>
@@ -516,55 +460,50 @@ export default function Products() {
                     onClick={() => setShowAllCategories(!showAllCategories)}
                     className="w-full px-3 py-1.5 text-left text-xs font-semibold text-emerald-700 hover:text-emerald-800"
                   >
-                    {showAllCategories ? 'Show fewer categories' : 'Show all categories'}
+                    {showAllCategories ? 'Show fewer' : `Show all ${filteredMainCategories.length} categories`}
                   </button>
                 )}
               </div>
+
+              {/* Location filter */}
               <div className="mt-4 space-y-2 border-t border-slate-100 pt-4">
-                <p className="text-xs font-semibold uppercase text-slate-500">Location</p>
+                <label htmlFor="location-filter" className="text-xs font-semibold uppercase text-slate-500">Location</label>
                 <select
+                  id="location-filter"
                   value={selectedLocation}
                   onChange={(e) => setSelectedLocation(e.target.value)}
                   className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
                 >
                   <option value="">All locations</option>
                   {locations.map((loc) => (
-                    <option key={loc} value={loc}>
-                      {loc}
-                    </option>
+                    <option key={loc} value={loc}>{loc}</option>
                   ))}
                 </select>
                 {selectedLocation && (
-                  <button
-                    type="button"
-                    onClick={() => setSelectedLocation('')}
-                    className="text-xs font-medium text-slate-500 underline"
-                  >
+                  <button type="button" onClick={() => setSelectedLocation('')} className="text-xs font-medium text-slate-500 underline">
                     Clear location
                   </button>
                 )}
               </div>
             </div>
+
+            {/* Subcategory flyout */}
             {activeMainCategoryId && (
-              <div className="absolute left-full top-0 z-30 ml-4 hidden w-64 rounded-lg border border-slate-200 bg-white p-4 shadow-lg lg:block">
-                <h4 className="mb-2 text-sm font-semibold text-slate-900">
+              <div className="absolute left-full top-0 z-30 ml-4 hidden w-64 rounded-xl border border-slate-200 bg-white p-4 shadow-lg lg:block">
+                <h3 className="mb-2 text-sm font-semibold text-slate-900">
                   {categories.find((cat) => cat.id === activeMainCategoryId)?.name}
-                </h4>
+                </h3>
                 <div className="space-y-2">
                   {getSubcategories(activeMainCategoryId).map((subcat) => (
                     <button
                       key={subcat.id}
-                      onClick={() => {
-                        setSelectedCategory(subcat.id)
-                        setActiveMainCategoryId(null)
-                      }}
-                      className={`w-full rounded-lg px-3 py-1.5 text-left text-sm transition ${selectedCategory === subcat.id
-                        ? 'bg-emerald-600 text-white'
-                        : 'bg-slate-100 text-slate-800 hover:bg-slate-200'
-                        }`}
+                      onClick={() => { setSelectedCategory(subcat.id); setActiveMainCategoryId(null) }}
+                      className={`w-full rounded-lg px-3 py-1.5 text-left text-sm transition ${
+                        selectedCategory === subcat.id ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-800 hover:bg-slate-200'
+                      }`}
                     >
-                      <span className="mr-1">{subcat.icon}</span>
-                      <span>{subcat.name}</span>
+                      <span className="mr-1" aria-hidden="true">{subcat.icon}</span>
+                      {subcat.name}
                     </button>
                   ))}
                   {getSubcategories(activeMainCategoryId).length === 0 && (
@@ -573,13 +512,14 @@ export default function Products() {
                 </div>
               </div>
             )}
-          </div>
+          </aside>
 
           {/* Products Grid */}
-          <div className="lg:col-span-6">
-            <div className="mb-4 flex flex-col gap-2 rounded-lg border border-slate-200 bg-white px-4 py-3 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+          <section className="lg:col-span-6" aria-label="Product listings">
+            {/* Results bar */}
+            <div className="mb-4 flex flex-col gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm sm:flex-row sm:items-center sm:justify-between">
               <div>
-              <p className="text-sm font-semibold text-slate-950">{selectedCategoryName}</p>
+                <p className="text-sm font-semibold text-slate-950">{selectedCategoryName}</p>
                 <p className="text-xs text-slate-500">
                   {filteredProducts.length} result{filteredProducts.length === 1 ? '' : 's'}
                   {selectedLocation ? ` in ${selectedLocation}` : ''}
@@ -595,11 +535,13 @@ export default function Products() {
                 </button>
               )}
             </div>
+
+            {/* Loading skeletons */}
             {loading ? (
-              <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
+              <div className="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-4" aria-label="Loading products">
                 {Array.from({ length: 6 }).map((_, index) => (
-                  <div key={index} className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
-                    <div className="h-40 animate-pulse bg-slate-200" />
+                  <div key={index} className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+                    <div className="aspect-[4/3] animate-pulse bg-slate-200" />
                     <div className="space-y-2 p-3">
                       <div className="h-4 w-3/4 animate-pulse rounded bg-slate-200" />
                       <div className="h-4 w-1/2 animate-pulse rounded bg-slate-200" />
@@ -608,78 +550,93 @@ export default function Products() {
                   </div>
                 ))}
               </div>
+
             ) : filteredProducts.length === 0 ? (
-              <div className="rounded-lg border border-dashed border-slate-300 bg-white px-6 py-12 text-center">
+              <div className="rounded-xl border border-dashed border-slate-300 bg-white px-6 py-16 text-center">
                 <p className="text-lg font-semibold text-slate-900">No products found</p>
                 <p className="mt-1 text-sm text-slate-600">Try a different search, category, or location.</p>
                 {activeFilterCount > 0 && (
                   <button
                     type="button"
                     onClick={clearFilters}
-                    className="mt-4 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
+                    className="mt-4 rounded-lg bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700"
                   >
                     Clear filters
                   </button>
                 )}
               </div>
+
             ) : (
               <>
-                <div className="grid grid-cols-1 gap-3 min-[430px]:grid-cols-2 md:grid-cols-3 md:gap-4">
+                <div className="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-4">
                   {filteredProducts.slice(0, visibleCount).map((product) => (
-                    <Link key={product.id} href={`/products/${product.id}`} className="group block">
-                      <article className="h-full overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm transition hover:border-emerald-200 hover:shadow-md">
-                        {product.image_url ? (
-                          <img
-                            src={getWatermarkedImageUrl(product.image_url)}
-                            alt={product.title}
-                            className="h-36 w-full object-cover transition duration-300 group-hover:scale-[1.02] sm:h-40"
-                          />
-                        ) : (
-                          <div className="flex h-36 w-full items-center justify-center bg-slate-200 sm:h-40">
-                            <span className="text-xs font-medium text-slate-500">No image</span>
-                          </div>
-                        )}
+                    <Link key={product.id} href={productUrl(product)} className="group block">
+                      <article className="h-full overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition hover:border-emerald-200 hover:shadow-md">
+
+                        {/* Product image — object-contain to avoid center-crop on portrait images */}
+                        <div className="relative flex aspect-[4/3] w-full items-center justify-center overflow-hidden bg-slate-50">
+                          {product.image_url ? (
+                            <img
+                              src={getCardImageUrl(product.image_url)}
+                              alt={`${product.title} for sale in Ghana on AgriBuyX`}
+                              className="h-full w-full object-contain transition duration-300 group-hover:scale-[1.02] p-1"
+                              loading="lazy"
+                              width={400}
+                              height={300}
+                            />
+                          ) : (
+                            <div className="flex h-full w-full items-center justify-center">
+                              <span className="text-xs font-medium text-slate-400">No image</span>
+                            </div>
+                          )}
+                        </div>
+
                         <div className="p-3">
-                          <h3 className="mb-2 line-clamp-2 min-h-10 text-sm font-semibold leading-5 text-slate-900">
+                          <h3 className="mb-1.5 line-clamp-2 min-h-[2.5rem] text-sm font-semibold leading-5 text-slate-900">
                             {product.title || 'Untitled product'}
                           </h3>
-                          <p className="mb-2 text-base font-bold text-emerald-700">
-                            {formatPrice(product.price)}
+                          <p className="mb-1.5 text-base font-bold text-emerald-700">
+                            {formatPriceGHS(product.price)}
                           </p>
-                          <p className="mb-3 line-clamp-2 text-xs leading-5 text-slate-600">
-                            {product.description || 'No description provided.'}
-                          </p>
-                          <p className="truncate border-t border-slate-100 pt-2 text-xs font-medium text-slate-500">
-                            {product.location || 'Location not listed'}
-                          </p>
+                          {product.description && (
+                            <p className="mb-2 line-clamp-2 text-xs leading-5 text-slate-500">
+                              {product.description}
+                            </p>
+                          )}
+                          {product.location && (
+                            <p className="truncate border-t border-slate-100 pt-2 text-xs font-medium text-slate-500">
+                              📍 {product.location}
+                            </p>
+                          )}
                         </div>
                       </article>
                     </Link>
                   ))}
                 </div>
+
                 {visibleCount < filteredProducts.length && (
-                  <div className="mt-6 flex justify-center">
+                  <div className="mt-8 flex justify-center">
                     <button
                       type="button"
                       onClick={() => setVisibleCount((prev) => prev + 12)}
-                      className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
+                      className="rounded-lg border border-slate-300 bg-white px-6 py-3 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 hover:border-emerald-300 transition"
                     >
-                      Load more products
+                      Load more products ({filteredProducts.length - visibleCount} remaining)
                     </button>
                   </div>
                 )}
               </>
             )}
-          </div>
+          </section>
 
-          {/* Updates & Social Column */}
-          <div className="lg:col-span-3">
+          {/* Right sidebar — updates, social, marketplace notes */}
+          <aside className="lg:col-span-3" aria-label="Marketplace sidebar">
             <div className="space-y-4 lg:sticky lg:top-24">
-              <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 shadow-sm">
-                <p className="text-xs font-semibold uppercase tracking-wide text-emerald-800">
-                  Buyer help
-                </p>
-                <h3 className="mt-1 text-base font-bold text-slate-950">Need help choosing?</h3>
+
+              {/* Support CTA */}
+              <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 shadow-sm">
+                <p className="text-xs font-semibold uppercase tracking-wide text-emerald-800">Buyer help</p>
+                <h2 className="mt-1 text-base font-bold text-slate-950">Need help choosing?</h2>
                 <p className="mt-2 text-sm leading-6 text-slate-700">
                   Ask about product availability, pricing, seller contact, or complaints.
                 </p>
@@ -692,25 +649,21 @@ export default function Products() {
                 </button>
               </div>
 
-              <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+              {/* Blog previews */}
+              <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
                 <div className="mb-4 flex items-start justify-between gap-3">
                   <div>
-                    <h3 className="text-base font-bold text-slate-900">Updates & Tips</h3>
-                    <p className="mt-1 text-sm text-slate-600">
-                      Market news and practical buying notes.
-                    </p>
+                    <h2 className="text-base font-bold text-slate-900">Updates &amp; Tips</h2>
+                    <p className="mt-1 text-sm text-slate-600">Market news and practical buying notes.</p>
                   </div>
-                  <Link
-                    href="/blog"
-                    className="shrink-0 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-                  >
+                  <Link href="/blog" className="shrink-0 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50">
                     View all
                   </Link>
                 </div>
                 {blogLoading ? (
                   <div className="space-y-3">
-                    {Array.from({ length: 3 }).map((_, index) => (
-                      <div key={index} className="rounded-lg border border-slate-100 p-3">
+                    {Array.from({ length: 3 }).map((_, i) => (
+                      <div key={i} className="rounded-lg border border-slate-100 p-3">
                         <div className="h-3 w-20 animate-pulse rounded bg-slate-200" />
                         <div className="mt-2 h-4 w-full animate-pulse rounded bg-slate-200" />
                         <div className="mt-2 h-3 w-3/4 animate-pulse rounded bg-slate-100" />
@@ -724,21 +677,13 @@ export default function Products() {
                 ) : (
                   <div className="space-y-3">
                     {blogPosts.slice(0, 3).map((post) => (
-                      <Link
-                        key={post.id}
-                        href={`/blog/${post.slug}`}
-                        className="block rounded-lg border border-slate-200 bg-white p-3 transition hover:border-emerald-200 hover:bg-emerald-50"
-                      >
+                      <Link key={post.id} href={`/blog/${post.slug}`} className="block rounded-lg border border-slate-200 bg-white p-3 transition hover:border-emerald-200 hover:bg-emerald-50">
                         <p className="text-xs font-medium text-slate-500">
-                          {new Date(post.created_at).toLocaleDateString()}
+                          {new Date(post.created_at).toLocaleDateString('en-GH', { day: 'numeric', month: 'short', year: 'numeric' })}
                         </p>
-                        <p className="mt-1 line-clamp-2 text-sm font-semibold leading-5 text-slate-900">
-                          {post.title}
-                        </p>
+                        <p className="mt-1 line-clamp-2 text-sm font-semibold leading-5 text-slate-900">{post.title}</p>
                         {post.summary && (
-                          <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-600">
-                            {post.summary}
-                          </p>
+                          <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-600">{post.summary}</p>
                         )}
                       </Link>
                     ))}
@@ -746,43 +691,27 @@ export default function Products() {
                 )}
               </div>
 
-              <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-                <h3 className="text-base font-bold text-slate-900">Follow AgriBuyX</h3>
-                <p className="mt-1 text-sm leading-6 text-slate-600">
-                  Get new product alerts and marketplace updates.
-                </p>
+              {/* Social links */}
+              <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                <h2 className="text-base font-bold text-slate-900">Follow AgriBuyX</h2>
+                <p className="mt-1 text-sm leading-6 text-slate-600">Get new product alerts and marketplace updates.</p>
                 <div className="mt-4 grid gap-2">
                   {socialLinks['whatsapp_channel_url'] && (
-                    <a
-                      href={socialLinks['whatsapp_channel_url']}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center justify-between rounded-lg bg-emerald-600 px-3 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700"
-                    >
-                      <span>WhatsApp updates</span>
-                      <span aria-hidden="true">↗</span>
+                    <a href={socialLinks['whatsapp_channel_url']} target="_blank" rel="noopener noreferrer"
+                      className="inline-flex items-center justify-between rounded-lg bg-emerald-600 px-3 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700">
+                      <span>WhatsApp updates</span><span aria-hidden="true">↗</span>
                     </a>
                   )}
                   {socialLinks['tiktok_url'] && (
-                    <a
-                      href={socialLinks['tiktok_url']}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center justify-between rounded-lg bg-slate-950 px-3 py-2.5 text-sm font-semibold text-white hover:bg-black"
-                    >
-                      <span>TikTok</span>
-                      <span aria-hidden="true">↗</span>
+                    <a href={socialLinks['tiktok_url']} target="_blank" rel="noopener noreferrer"
+                      className="inline-flex items-center justify-between rounded-lg bg-slate-950 px-3 py-2.5 text-sm font-semibold text-white hover:bg-black">
+                      <span>TikTok</span><span aria-hidden="true">↗</span>
                     </a>
                   )}
                   {socialLinks['facebook_url'] && (
-                    <a
-                      href={socialLinks['facebook_url']}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center justify-between rounded-lg bg-blue-700 px-3 py-2.5 text-sm font-semibold text-white hover:bg-blue-800"
-                    >
-                      <span>Facebook</span>
-                      <span aria-hidden="true">↗</span>
+                    <a href={socialLinks['facebook_url']} target="_blank" rel="noopener noreferrer"
+                      className="inline-flex items-center justify-between rounded-lg bg-blue-700 px-3 py-2.5 text-sm font-semibold text-white hover:bg-blue-800">
+                      <span>Facebook</span><span aria-hidden="true">↗</span>
                     </a>
                   )}
                 </div>
@@ -793,104 +722,96 @@ export default function Products() {
                 )}
               </div>
 
-              <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-                <h3 className="text-base font-bold text-slate-900">Marketplace notes</h3>
+              {/* Marketplace notes */}
+              <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                <h2 className="text-base font-bold text-slate-900">Marketplace notes</h2>
                 <div className="mt-3 space-y-3 text-sm text-slate-600">
                   <div className="flex gap-3">
-                    <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-emerald-500" />
+                    <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-emerald-500" aria-hidden="true" />
                     <p>Contact the seller directly before visiting or making payment.</p>
                   </div>
                   <div className="flex gap-3">
-                    <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-emerald-500" />
+                    <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-emerald-500" aria-hidden="true" />
                     <p>Confirm price, quantity, location, and product condition.</p>
                   </div>
                   <div className="flex gap-3">
-                    <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-emerald-500" />
+                    <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-emerald-500" aria-hidden="true" />
                     <p>Report suspicious listings through support.</p>
                   </div>
                 </div>
               </div>
+
             </div>
-          </div>
+          </aside>
         </div>
-      </div>
+      </main>
 
       {/* Mobile floating support button */}
       <button
         type="button"
         onClick={() => setIsSupportOpen(true)}
-        className="fixed bottom-4 right-4 z-40 inline-flex h-12 w-12 items-center justify-center rounded-full bg-emerald-600 text-white shadow-lg md:hidden"
-        aria-label="Support and complaints"
+        className="fixed bottom-5 right-5 z-40 inline-flex h-14 w-14 items-center justify-center rounded-full bg-emerald-600 text-white shadow-lg md:hidden hover:bg-emerald-700 transition"
+        aria-label="Open support and complaints"
       >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 24 24"
-          className="h-6 w-6"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            d="M5 19l1.5-3A7 7 0 0112 5h0a7 7 0 017 7v0a7 7 0 01-7 7H5z"
-          />
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            d="M9 11h.01M12 11h.01M15 11h.01"
-          />
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M5 19l1.5-3A7 7 0 0112 5h0a7 7 0 017 7v0a7 7 0 01-7 7H5z" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 11h.01M12 11h.01M15 11h.01" />
         </svg>
       </button>
 
+      {/* Support Modal */}
       {isSupportOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-          <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-lg bg-white p-5 shadow-lg">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="support-modal-title"
+        >
+          <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-xl bg-white p-5 shadow-lg">
             <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-base font-semibold text-gray-900">Support / Complaints</h2>
+              <h2 id="support-modal-title" className="text-base font-semibold text-slate-900">Support / Complaints</h2>
               <button
                 type="button"
-                onClick={() => {
-                  setIsSupportOpen(false)
-                  setSupportError(null)
-                  setSupportSuccess(null)
-                }}
-                className="text-sm text-gray-500 hover:text-gray-800"
+                onClick={() => { setIsSupportOpen(false); setSupportError(null); setSupportSuccess(null) }}
+                className="rounded-lg p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-800"
+                aria-label="Close support modal"
               >
                 ✕
               </button>
             </div>
-            <p className="mb-3 text-xs text-gray-600">
-              Tell us what you need help with. We will reply from support@agribuyx.com.
-            </p>
-            <form onSubmit={handleSupportSubmit} className="space-y-3 text-sm">
+            <p className="mb-3 text-xs text-slate-600">Tell us what you need help with. We will reply from support@agribuyx.com.</p>
+            <form onSubmit={handleSupportSubmit} className="space-y-3 text-sm" noValidate>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-gray-700">Name</label>
+                  <label htmlFor="support-name" className="mb-1 block text-xs font-medium text-slate-700">Name</label>
                   <input
+                    id="support-name"
                     type="text"
                     value={supportForm.name}
                     onChange={(e) => setSupportForm({ ...supportForm, name: e.target.value })}
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-gray-700">Email *</label>
+                  <label htmlFor="support-email" className="mb-1 block text-xs font-medium text-slate-700">Email *</label>
                   <input
+                    id="support-email"
                     type="email"
                     value={supportForm.email}
                     onChange={(e) => setSupportForm({ ...supportForm, email: e.target.value })}
                     required
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                    aria-required="true"
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-gray-700">Topic</label>
+                <label htmlFor="support-topic" className="mb-1 block text-xs font-medium text-slate-700">Topic</label>
                 <select
+                  id="support-topic"
                   value={supportForm.category}
                   onChange={(e) => setSupportForm({ ...supportForm, category: e.target.value })}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 >
                   <option value="">Select</option>
                   <option value="Product issue">Product issue</option>
@@ -901,33 +822,31 @@ export default function Products() {
                 </select>
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-gray-700">Message *</label>
+                <label htmlFor="support-message" className="mb-1 block text-xs font-medium text-slate-700">Message *</label>
                 <textarea
+                  id="support-message"
                   rows={4}
                   value={supportForm.message}
                   onChange={(e) => setSupportForm({ ...supportForm, message: e.target.value })}
                   required
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                  aria-required="true"
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
-              {supportError && <p className="text-xs text-red-600">{supportError}</p>}
-              {supportSuccess && <p className="text-xs text-green-600">{supportSuccess}</p>}
+              {supportError && <p role="alert" className="text-xs text-red-600">{supportError}</p>}
+              {supportSuccess && <p role="status" className="text-xs text-emerald-600">{supportSuccess}</p>}
               <div className="flex justify-end gap-2 pt-1">
                 <button
                   type="button"
-                  onClick={() => {
-                    setIsSupportOpen(false)
-                    setSupportError(null)
-                    setSupportSuccess(null)
-                  }}
-                  className="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                  onClick={() => { setIsSupportOpen(false); setSupportError(null); setSupportSuccess(null) }}
+                  className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={supportSubmitting}
-                  className="rounded-lg bg-green-600 px-4 py-1.5 text-xs font-semibold text-white hover:bg-green-700 disabled:cursor-not-allowed disabled:bg-green-400"
+                  className="rounded-lg bg-emerald-600 px-4 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-emerald-400"
                 >
                   {supportSubmitting ? 'Sending...' : 'Send message'}
                 </button>

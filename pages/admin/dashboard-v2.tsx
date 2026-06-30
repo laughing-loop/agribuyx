@@ -3,6 +3,7 @@ import { useRouter } from 'next/router'
 import { supabase } from '@/lib/supabase'
 import { CldUploadWidget } from 'next-cloudinary'
 import { config } from '@/lib/config'
+import { generateSlug } from '@/lib/seo'
 import VendorsPage from './vendors'
 
 // Simple role check based on strict email list
@@ -441,8 +442,12 @@ function ProductsTab({ admin }: { admin: Admin | null }) {
         return
       }
 
+      // Backfill slug using the new product's UUID suffix for uniqueness
       if (productData?.[0]?.id) {
-        await saveProductImages(productData[0].id, formData.image_urls)
+        const productId = productData[0].id as string
+        const uniqueSlug = `${generateSlug(formData.title.trim())}-${productId.slice(0, 6)}`
+        await supabase.from('products').update({ slug: uniqueSlug }).eq('id', productId)
+        await saveProductImages(productId, formData.image_urls)
       }
 
       resetProductForm()
@@ -490,6 +495,12 @@ function ProductsTab({ admin }: { admin: Admin | null }) {
       if (updateError) {
         setSaveError(updateError.message)
         return
+      }
+
+      // Regenerate slug only if title changed
+      if (formData.title.trim() !== (editingProduct.title || '')) {
+        const newSlug = `${generateSlug(formData.title.trim())}-${editingProduct.id.slice(0, 6)}`
+        await supabase.from('products').update({ slug: newSlug }).eq('id', editingProduct.id)
       }
 
       await replaceProductImages(editingProduct.id, formData.image_urls)
