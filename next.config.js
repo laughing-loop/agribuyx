@@ -27,6 +27,28 @@ const nextConfig = {
         }
         return config
     },
+
+    async rewrites() {
+        return [
+            {
+                // This allows Bing to request /[INDEXNOW_KEY].txt and we serve it dynamically
+                source: '/:key',
+                has: [
+                    {
+                        type: 'query',
+                        key: 'key',
+                        value: '(?<keyval>.*\\.txt$)', // only match .txt
+                    },
+                ],
+                destination: '/api/indexnow-key',
+            },
+            // Fallback for when the query param match isn't perfect in some environments:
+            {
+                source: '/:path*.txt',
+                destination: '/api/indexnow-key?path=:path*',
+            }
+        ]
+    },
 }
 
 module.exports = nextConfig

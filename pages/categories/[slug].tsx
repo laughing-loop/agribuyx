@@ -88,7 +88,26 @@ export const getServerSideProps: GetServerSideProps<Props> = async (context) => 
   }
 
   if (!categoryData) {
-    return { notFound: true }
+    // If category not found in DB, but it's one of our canonical site links,
+    // synthesize a category object so it renders an empty state instead of 404.
+    const canonicalCategories: Record<string, { name: string, description: string, icon: string }> = {
+      'farm-machinery-equipment': { name: 'Farm Machinery & Equipment', icon: '🚜', description: 'Find farm machinery and agricultural equipment in Ghana including knapsack sprayers, irrigation tools, farm tools, and machinery from trusted sellers on AgriBuyX.' },
+      'seeds': { name: 'Seeds', icon: '🌱', description: 'Browse agricultural seeds for sale in Ghana from trusted sellers on AgriBuyX.' },
+      'fertilizers': { name: 'Fertilizers', icon: '🌾', description: 'Find fertilizers and soil enhancers for sale in Ghana from verified sellers.' },
+      'crop-protection': { name: 'Crop Protection', icon: '🛡️', description: 'Find crop protection products, pesticides, and herbicides for sale in Ghana.' },
+      'livestock-supplies': { name: 'Livestock Supplies', icon: '🐄', description: 'Browse livestock supplies, feed, and equipment in Ghana.' },
+      'irrigation-watering': { name: 'Irrigation & Watering', icon: '💧', description: 'Find irrigation equipment and watering tools for agriculture in Ghana.' },
+    }
+
+    if (canonicalCategories[slug]) {
+      categoryData = {
+        id: `synthetic-${slug}`,
+        slug: slug,
+        ...canonicalCategories[slug]
+      }
+    } else {
+      return { notFound: true }
+    }
   }
 
   // Fetch subcategories
@@ -165,13 +184,17 @@ export default function CategoryPage({ category, subcategories, products, catSlu
 
       {/* Navigation */}
       <nav className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 shadow-sm backdrop-blur" aria-label="Main navigation">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3">
-          <Link href="/products" aria-label="AgriBuyX marketplace">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between px-4 py-3 gap-y-3">
+          <Link href="/" aria-label="AgriBuyX — back to marketplace">
             <Image src="/agribuyx_logo-02.svg" alt="AgriBuyX" width={140} height={32} className="h-8 w-auto" />
           </Link>
-          <div className="flex items-center gap-4 text-sm font-medium text-slate-700">
-            <Link href="/products" className="hover:text-emerald-700">Marketplace</Link>
-            <Link href="/blog" className="hover:text-emerald-700">Blog</Link>
+          <div className="flex items-center gap-3 md:gap-5 text-sm font-medium text-slate-700 overflow-x-auto">
+            <Link href="/products" className="hover:text-emerald-700 whitespace-nowrap">Marketplace</Link>
+            <Link href="/categories/farm-machinery-equipment" className="hover:text-emerald-700 whitespace-nowrap hidden sm:inline-block">Machinery</Link>
+            <Link href="/categories/seeds" className="hover:text-emerald-700 whitespace-nowrap hidden sm:inline-block">Seeds</Link>
+            <Link href="/categories/fertilizers" className="hover:text-emerald-700 whitespace-nowrap hidden md:inline-block">Fertilizers</Link>
+            <Link href="/blog" className="hover:text-emerald-700 whitespace-nowrap">Blog</Link>
+            <Link href="/admin/login" className="hover:text-emerald-700 whitespace-nowrap">Vendor</Link>
           </div>
         </div>
       </nav>

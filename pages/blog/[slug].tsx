@@ -182,19 +182,18 @@ export default function BlogPostPage({ post }: Props) {
 
       {/* Navigation */}
       <nav className="bg-white/90 backdrop-blur-sm sticky top-0 z-50 border-b border-slate-200" aria-label="Main navigation">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex justify-between items-center">
-          <Link href="/blog" className="flex items-center text-slate-600 hover:text-emerald-700 transition-colors font-medium text-sm gap-1">
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-            </svg>
-            Blog
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between px-4 py-3 gap-y-3">
+          <Link href="/" aria-label="AgriBuyX — back to marketplace">
+            <Image src="/agribuyx_logo-02.svg" alt="AgriBuyX" width={140} height={32} className="h-8 w-auto" />
           </Link>
-          <Link href="/products" aria-label="AgriBuyX marketplace">
-            <Image src="/agribuyx_logo-02.svg" alt="AgriBuyX" width={120} height={28} className="h-7 w-auto" />
-          </Link>
-          <Link href="/products" className="text-sm font-medium text-slate-700 hover:text-emerald-700">
-            Shop
-          </Link>
+          <div className="flex items-center gap-3 md:gap-5 text-sm font-medium text-slate-700 overflow-x-auto">
+            <Link href="/products" className="hover:text-emerald-700 whitespace-nowrap">Marketplace</Link>
+            <Link href="/categories/farm-machinery-equipment" className="hover:text-emerald-700 whitespace-nowrap hidden sm:inline-block">Machinery</Link>
+            <Link href="/categories/seeds" className="hover:text-emerald-700 whitespace-nowrap hidden sm:inline-block">Seeds</Link>
+            <Link href="/categories/fertilizers" className="hover:text-emerald-700 whitespace-nowrap hidden md:inline-block">Fertilizers</Link>
+            <Link href="/blog" className="text-emerald-700 whitespace-nowrap">Blog</Link>
+            <Link href="/admin/login" className="hover:text-emerald-700 whitespace-nowrap">Vendor</Link>
+          </div>
         </div>
       </nav>
 

@@ -60,10 +60,9 @@ export const getServerSideProps: GetServerSideProps = async ({ res }) => {
   const urls: string[] = []
 
   // ── Static pages ──────────────────────────────────────────────────────────
-  // Note: / is excluded — it permanently redirects (308) to /products.
-  // Sitemaps must only include canonical, indexable URLs.
 
-  urls.push(url(`${BASE_URL}/products`, { changefreq: 'hourly', priority: '1.0', lastmod: today }))
+  urls.push(url(`${BASE_URL}`, { changefreq: 'daily', priority: '1.0', lastmod: today }))
+  urls.push(url(`${BASE_URL}/products`, { changefreq: 'hourly', priority: '0.9', lastmod: today }))
   urls.push(url(`${BASE_URL}/blog`, { changefreq: 'daily', priority: '0.8', lastmod: today }))
 
   // ── Products ──────────────────────────────────────────────────────────────

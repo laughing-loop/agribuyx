@@ -37,84 +37,51 @@ export default function MarketplaceFooter({
           </p>
         </div>
 
-        <div className="grid grid-cols-2 gap-6 md:col-span-5 sm:grid-cols-3">
+        <div className="grid grid-cols-2 gap-6 md:col-span-6 sm:grid-cols-3">
           <div>
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Shop</h3>
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Marketplace</h3>
             <div className="mt-3 grid gap-2 text-sm">
-              <Link href="/products" className="text-slate-700 hover:text-emerald-700">
-                Marketplace
-              </Link>
-              <Link href="/blog" className="text-slate-700 hover:text-emerald-700">
-                Updates
-              </Link>
+              <Link href="/products" className="text-slate-700 hover:text-emerald-700">All Products</Link>
+              <Link href="/categories/farm-machinery-equipment" className="text-slate-700 hover:text-emerald-700">Farm Machinery</Link>
+              <Link href="/categories/seeds" className="text-slate-700 hover:text-emerald-700">Seeds</Link>
+              <Link href="/categories/fertilizers" className="text-slate-700 hover:text-emerald-700">Fertilizers</Link>
+              <Link href="/categories/crop-protection" className="text-slate-700 hover:text-emerald-700">Crop Protection</Link>
+              <Link href="/categories/livestock-supplies" className="text-slate-700 hover:text-emerald-700">Livestock Supplies</Link>
+              <Link href="/categories/irrigation-watering" className="text-slate-700 hover:text-emerald-700">Irrigation</Link>
             </div>
           </div>
           <div>
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Account</h3>
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Company</h3>
             <div className="mt-3 grid gap-2 text-sm">
-              <Link href="/admin/login" className="text-slate-700 hover:text-emerald-700">
-                Vendor Office
-              </Link>
+              <Link href="/" className="text-slate-700 hover:text-emerald-700">About AgriBuyX</Link>
+              <Link href="/blog" className="text-slate-700 hover:text-emerald-700">Blog & Tips</Link>
               {onSupportClick ? (
-                <button
-                  type="button"
-                  onClick={onSupportClick}
-                  className="text-left text-slate-700 hover:text-emerald-700"
-                >
-                  Support
+                <button type="button" onClick={onSupportClick} className="text-left text-slate-700 hover:text-emerald-700">
+                  Contact Support
                 </button>
               ) : (
                 <a href="mailto:support@agribuyx.com" className="text-slate-700 hover:text-emerald-700">
-                  Support
+                  Contact Support
                 </a>
               )}
-            </div>
-          </div>
-          <div>
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Contact</h3>
-            <div className="mt-3 grid gap-2 text-sm">
-              <a href="mailto:support@agribuyx.com" className="text-slate-700 hover:text-emerald-700">
-                support@agribuyx.com
-              </a>
               {hasSocialLinks && (
-                <div className="flex flex-wrap gap-2 pt-1">
-                  {socialLinks.whatsapp_channel_url && (
-                    <a
-                      href={socialLinks.whatsapp_channel_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-                    >
-                      WhatsApp
-                    </a>
-                  )}
-                  {socialLinks.tiktok_url && (
-                    <a
-                      href={socialLinks.tiktok_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-                    >
-                      TikTok
-                    </a>
-                  )}
-                  {socialLinks.facebook_url && (
-                    <a
-                      href={socialLinks.facebook_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-                    >
-                      Facebook
-                    </a>
-                  )}
+                <div className="flex flex-wrap gap-2 pt-2">
+                  {socialLinks.whatsapp_channel_url && <a href={socialLinks.whatsapp_channel_url} target="_blank" rel="noopener noreferrer" className="text-xs font-semibold text-slate-700 hover:text-emerald-700">WhatsApp</a>}
+                  {socialLinks.tiktok_url && <a href={socialLinks.tiktok_url} target="_blank" rel="noopener noreferrer" className="text-xs font-semibold text-slate-700 hover:text-emerald-700">TikTok</a>}
+                  {socialLinks.facebook_url && <a href={socialLinks.facebook_url} target="_blank" rel="noopener noreferrer" className="text-xs font-semibold text-slate-700 hover:text-emerald-700">Facebook</a>}
                 </div>
               )}
             </div>
           </div>
+          <div>
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Vendor</h3>
+            <div className="mt-3 grid gap-2 text-sm">
+              <Link href="/admin/login" className="text-slate-700 hover:text-emerald-700">Vendor Office</Link>
+            </div>
+          </div>
         </div>
 
-        <div className="rounded-lg bg-slate-50 p-4 md:col-span-3">
+        <div className="rounded-lg bg-slate-50 p-4 md:col-span-2">
           <h3 className="text-sm font-semibold text-slate-900">Buyer reminder</h3>
           <p className="mt-2 text-sm leading-6 text-slate-600">
             Confirm price, quantity, location, and seller details before payment or pickup.

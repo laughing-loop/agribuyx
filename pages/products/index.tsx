@@ -321,13 +321,13 @@ export default function Products({ initialProducts, initialCategories, initialBl
             <Link href="/products" className="flex items-center gap-2" aria-label="AgriBuyX home">
               <Image src="/agribuyx_logo-02.svg" alt="AgriBuyX" width={140} height={32} className="h-8 w-auto" />
             </Link>
-            <div className="flex items-center gap-2 text-xs font-medium text-slate-700 md:hidden">
+            <div className="flex items-center gap-3 text-xs font-medium text-slate-700 md:hidden flex-wrap">
+              <Link href="/products" className="hover:text-emerald-700">All</Link>
+              <Link href="/categories/farm-machinery-equipment" className="hover:text-emerald-700">Machinery</Link>
+              <Link href="/categories/seeds" className="hover:text-emerald-700">Seeds</Link>
+              <Link href="/categories/fertilizers" className="hover:text-emerald-700">Fertilizers</Link>
               <Link href="/blog" className="hover:text-emerald-700">Blog</Link>
-              {socialLinks['whatsapp_channel_url'] && (
-                <a href={socialLinks['whatsapp_channel_url']} target="_blank" rel="noopener noreferrer" className="hover:text-emerald-700">
-                  Channel
-                </a>
-              )}
+              <Link href="/admin/login" className="hover:text-emerald-700 font-semibold">Vendor</Link>
             </div>
           </div>
           <div className="flex w-full flex-col gap-2 md:w-auto md:flex-row md:items-center md:gap-4">
@@ -350,27 +350,15 @@ export default function Products({ initialProducts, initialCategories, initialBl
                   className="h-10 w-full rounded-lg border border-slate-300 bg-slate-50 pl-9 pr-3 text-sm outline-none transition focus:border-emerald-500 focus:bg-white focus:ring-2 focus:ring-emerald-100"
                 />
               </div>
-              <button
-                type="button"
-                onClick={() => setIsSupportOpen(true)}
-                className="hidden h-10 items-center rounded-lg border border-emerald-600 px-3 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-50 md:inline-flex"
-              >
-                Support
-              </button>
             </div>
-            <div className="hidden items-center justify-end gap-3 text-sm md:flex">
-              <Link href="/blog" className="inline-flex items-center rounded-lg px-3 py-2 font-medium text-slate-700 hover:bg-slate-100">
-                Blog
+            <div className="hidden items-center justify-end gap-4 text-sm md:flex font-medium text-slate-700">
+              <Link href="/categories/farm-machinery-equipment" className="hover:text-emerald-700">Machinery</Link>
+              <Link href="/categories/seeds" className="hover:text-emerald-700">Seeds</Link>
+              <Link href="/categories/fertilizers" className="hover:text-emerald-700">Fertilizers</Link>
+              <Link href="/blog" className="hover:text-emerald-700">Blog</Link>
+              <Link href="/admin/login" className="rounded-lg bg-slate-900 px-4 py-2 text-white hover:bg-slate-800">
+                Vendor Office
               </Link>
-              {socialLinks['whatsapp_channel_url'] && (
-                <a
-                  href={socialLinks['whatsapp_channel_url']}
-                  target="_blank" rel="noopener noreferrer"
-                  className="inline-flex items-center rounded-lg px-3 py-2 font-medium text-slate-700 hover:bg-slate-100"
-                >
-                  Channel
-                </a>
-              )}
             </div>
           </div>
         </div>

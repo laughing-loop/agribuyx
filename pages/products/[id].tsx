@@ -353,17 +353,17 @@ export default function ProductDetail({ product, category, vendor, images, relat
 
       {/* Navigation */}
       <nav className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 shadow-sm backdrop-blur" aria-label="Main navigation">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3">
-          <Link href="/products" className="flex items-center gap-2" aria-label="AgriBuyX — back to marketplace">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between px-4 py-3 gap-y-3">
+          <Link href="/" aria-label="AgriBuyX — back to marketplace">
             <Image src="/agribuyx_logo-02.svg" alt="AgriBuyX" width={140} height={32} className="h-8 w-auto" />
           </Link>
-          <div className="flex items-center gap-4 text-sm">
-            <Link href="/products" className="hidden font-medium text-slate-700 hover:text-emerald-700 sm:inline-flex">
-              Marketplace
-            </Link>
-            <Link href="/blog" className="hidden font-medium text-slate-700 hover:text-emerald-700 sm:inline-flex">
-              Blog
-            </Link>
+          <div className="flex items-center gap-3 md:gap-5 text-sm font-medium text-slate-700 overflow-x-auto">
+            <Link href="/products" className="hover:text-emerald-700 whitespace-nowrap">Marketplace</Link>
+            <Link href="/categories/farm-machinery-equipment" className="hover:text-emerald-700 whitespace-nowrap hidden sm:inline-block">Machinery</Link>
+            <Link href="/categories/seeds" className="hover:text-emerald-700 whitespace-nowrap hidden sm:inline-block">Seeds</Link>
+            <Link href="/categories/fertilizers" className="hover:text-emerald-700 whitespace-nowrap hidden md:inline-block">Fertilizers</Link>
+            <Link href="/blog" className="hover:text-emerald-700 whitespace-nowrap">Blog</Link>
+            <Link href="/admin/login" className="hover:text-emerald-700 whitespace-nowrap">Vendor</Link>
           </div>
         </div>
       </nav>

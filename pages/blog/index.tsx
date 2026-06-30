@@ -71,14 +71,18 @@ export default function BlogIndex({ posts }: Props) {
 
       {/* Navigation */}
       <nav className="bg-white/80 backdrop-blur-md shadow-sm sticky top-0 z-50 border-b border-slate-200" aria-label="Main navigation">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
-          <Link href="/products" className="flex items-center gap-2 transition-transform hover:scale-105" aria-label="AgriBuyX marketplace">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between px-4 py-3 gap-y-3">
+          <Link href="/" aria-label="AgriBuyX — back to marketplace">
             <Image src="/agribuyx_logo-02.svg" alt="AgriBuyX" width={140} height={32} className="h-8 w-auto" />
           </Link>
-          <nav className="flex items-center gap-5 text-sm font-medium" aria-label="Site links">
-            <Link href="/products" className="text-slate-700 hover:text-emerald-700 transition-colors">Shop</Link>
-            <Link href="/blog" className="text-emerald-700 font-semibold" aria-current="page">Blog</Link>
-          </nav>
+          <div className="flex items-center gap-3 md:gap-5 text-sm font-medium text-slate-700 overflow-x-auto">
+            <Link href="/products" className="hover:text-emerald-700 whitespace-nowrap">Marketplace</Link>
+            <Link href="/categories/farm-machinery-equipment" className="hover:text-emerald-700 whitespace-nowrap hidden sm:inline-block">Machinery</Link>
+            <Link href="/categories/seeds" className="hover:text-emerald-700 whitespace-nowrap hidden sm:inline-block">Seeds</Link>
+            <Link href="/categories/fertilizers" className="hover:text-emerald-700 whitespace-nowrap hidden md:inline-block">Fertilizers</Link>
+            <Link href="/blog" className="text-emerald-700 whitespace-nowrap" aria-current="page">Blog</Link>
+            <Link href="/admin/login" className="hover:text-emerald-700 whitespace-nowrap">Vendor</Link>
+          </div>
         </div>
       </nav>
 

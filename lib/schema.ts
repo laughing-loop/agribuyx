@@ -60,6 +60,26 @@ export function organizationSchema() {
   }
 }
 
+// ─── SiteNavigationElement Schema ──────────────────────────────────────────────
+
+export function siteNavigationElementSchema() {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'ItemList',
+    itemListElement: [
+      { '@type': 'SiteNavigationElement', position: 1, name: 'Marketplace', url: canonicalUrl('/products') },
+      { '@type': 'SiteNavigationElement', position: 2, name: 'Farm Machinery & Equipment', url: canonicalUrl('/categories/farm-machinery-equipment') },
+      { '@type': 'SiteNavigationElement', position: 3, name: 'Seeds', url: canonicalUrl('/categories/seeds') },
+      { '@type': 'SiteNavigationElement', position: 4, name: 'Fertilizers', url: canonicalUrl('/categories/fertilizers') },
+      { '@type': 'SiteNavigationElement', position: 5, name: 'Crop Protection', url: canonicalUrl('/categories/crop-protection') },
+      { '@type': 'SiteNavigationElement', position: 6, name: 'Livestock Supplies', url: canonicalUrl('/categories/livestock-supplies') },
+      { '@type': 'SiteNavigationElement', position: 7, name: 'Irrigation & Watering', url: canonicalUrl('/categories/irrigation-watering') },
+      { '@type': 'SiteNavigationElement', position: 8, name: 'Blog', url: canonicalUrl('/blog') },
+      { '@type': 'SiteNavigationElement', position: 9, name: 'Vendor Office', url: canonicalUrl('/admin/login') },
+    ]
+  }
+}
+
 // ─── Breadcrumb Schema ─────────────────────────────────────────────────────────
 
 export interface BreadcrumbItem {
