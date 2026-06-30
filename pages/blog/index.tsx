@@ -91,7 +91,7 @@ export default function BlogIndex({ posts }: Props) {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-20">
           <nav aria-label="Breadcrumb" className="mb-4">
             <ol className="flex items-center gap-2 text-xs text-emerald-200">
-              <li><Link href="/products" className="hover:text-white">Home</Link></li>
+              <li><Link href="/" className="hover:text-white">Home</Link></li>
               <li aria-hidden="true">/</li>
               <li className="text-white" aria-current="page">Blog</li>
             </ol>

@@ -1,6 +1,10 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 
 export default function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (req.method !== 'GET' && req.method !== 'HEAD') {
+    return res.status(405).json({ error: 'Method not allowed' })
+  }
+
   const { path } = req.query
   const key = process.env.INDEXNOW_KEY
 
@@ -9,10 +13,11 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
   }
 
   // The request could be /foo.txt, so path might be 'foo'
-  const requestedKey = Array.isArray(path) ? path[0] : path
+  const requestedKey = (Array.isArray(path) ? path[0] : path)?.replace(/\.txt$/, '')
 
   if (requestedKey === key) {
     res.setHeader('Content-Type', 'text/plain; charset=UTF-8')
+    res.setHeader('Cache-Control', 'public, s-maxage=86400, stale-while-revalidate=86400')
     res.status(200).send(key)
     return
   }
@@ -20,6 +25,7 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
   // Also check if the raw URL ends with the key.txt just in case rewrites act weird
   if (req.url && req.url.includes(`${key}.txt`)) {
     res.setHeader('Content-Type', 'text/plain; charset=UTF-8')
+    res.setHeader('Cache-Control', 'public, s-maxage=86400, stale-while-revalidate=86400')
     res.status(200).send(key)
     return
   }

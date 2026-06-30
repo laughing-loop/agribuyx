@@ -14,6 +14,7 @@
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
+import { useRouter } from 'next/router'
 import type { GetServerSideProps } from 'next'
 import { createClient } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
@@ -23,6 +24,8 @@ import SEO from '@/components/SEO'
 import JsonLd from '@/components/JsonLd'
 import { marketplaceSeoTitle, marketplaceSeoDescription, canonicalUrl, formatPriceGHS } from '@/lib/seo'
 import { websiteSchema, organizationSchema } from '@/lib/schema'
+import { getCanonicalCategory, inferProductCanonicalCategorySlug } from '@/lib/categoryMap'
+import { sanitizeSocialMap } from '@/lib/socialLinks'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -41,6 +44,8 @@ interface Product {
   features?: string
   contact_phone?: string
   slug?: string | null
+  category?: string | null
+  category_name?: string | null
 }
 
 interface Category {
@@ -130,6 +135,7 @@ function itemListSchema(products: Product[]) {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function Products({ initialProducts, initialCategories, initialBlogPosts, initialSocialLinks }: PageProps) {
+  const router = useRouter()
   const [products, setProducts] = useState<Product[]>(initialProducts)
   const [categories, setCategories] = useState<Category[]>(initialCategories)
   const [selectedCategory, setSelectedCategory] = useState<string>('')
@@ -139,7 +145,7 @@ export default function Products({ initialProducts, initialCategories, initialBl
   const [loading, setLoading] = useState(false)  // false: SSR data already present
   const [blogPosts, setBlogPosts] = useState<BlogPost[]>(initialBlogPosts)
   const [blogLoading, setBlogLoading] = useState(false)
-  const [socialLinks, setSocialLinks] = useState<{ [key: string]: string }>(initialSocialLinks)
+  const [socialLinks, setSocialLinks] = useState<{ [key: string]: string }>(sanitizeSocialMap(initialSocialLinks))
   const [socialLoading, setSocialLoading] = useState(false)
   const [categorySearch, setCategorySearch] = useState<string>('')
   const [showAllCategories, setShowAllCategories] = useState<boolean>(false)
@@ -156,6 +162,13 @@ export default function Products({ initialProducts, initialCategories, initialBl
   useEffect(() => { fetchCategories() }, [])
   useEffect(() => { fetchBlogPosts(); fetchSocialLinks() }, [])
   // Note: initial data comes from SSR props above; useEffect re-fetches for interactivity (filters, etc.)
+
+  useEffect(() => {
+    const q = router.query.q
+    const category = router.query.category
+    if (typeof q === 'string') setSearchQuery(q)
+    if (typeof category === 'string') setSelectedCategory(category)
+  }, [router.query.q, router.query.category])
 
   useEffect(() => {
     if (!activeMainCategoryId) return
@@ -206,7 +219,7 @@ export default function Products({ initialProducts, initialCategories, initialBl
     if (!error && data) {
       const map: { [key: string]: string } = {}
       data.forEach((row: any) => { if (row.key) map[row.key] = row.value || '' })
-      setSocialLinks(map)
+      setSocialLinks(sanitizeSocialMap(map))
     }
     setSocialLoading(false)
   }
@@ -226,6 +239,7 @@ export default function Products({ initialProducts, initialCategories, initialBl
   const visibleMainCategories = showAllCategories ? filteredMainCategories : filteredMainCategories.slice(0, 10)
   const selectedCategoryName = categories.find((cat) => cat.id === selectedCategory)?.name || 'All products'
   const activeFilterCount = [selectedCategory, selectedLocation, searchQuery.trim()].filter(Boolean).length
+  const categoryById = new Map(categories.map((category) => [category.id, category]))
 
   const clearFilters = () => {
     setSelectedCategory('')
@@ -297,6 +311,15 @@ export default function Products({ initialProducts, initialCategories, initialBl
 
   const productUrl = (p: Product) => p.slug ? `/products/${p.slug}` : `/products/${p.id}`
 
+  const productCategoryLabel = (product: Product) => {
+    if (product.category_id && categoryById.has(product.category_id)) {
+      return categoryById.get(product.category_id)?.name || 'Agricultural product'
+    }
+
+    const inferred = inferProductCanonicalCategorySlug(product)
+    return getCanonicalCategory(inferred)?.name || 'Agricultural product'
+  }
+
   return (
     <div className="min-h-screen bg-slate-50">
       <SEO
@@ -306,7 +329,7 @@ export default function Products({ initialProducts, initialCategories, initialBl
       />
       <JsonLd schema={websiteSchema()} id="website-schema" />
       <JsonLd schema={organizationSchema()} id="org-schema" />
-      <JsonLd schema={itemListSchema(products)} id="itemlist-schema" />
+      <JsonLd schema={itemListSchema(allDisplayedProducts)} id="itemlist-schema" />
 
       {/* Skip to content */}
       <a href="#marketplace-main" className="skip-to-content">Skip to marketplace</a>
@@ -318,7 +341,7 @@ export default function Products({ initialProducts, initialCategories, initialBl
       >
         <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-3 md:flex-row md:items-center md:justify-between md:py-4">
           <div className="flex items-center justify-between">
-            <Link href="/products" className="flex items-center gap-2" aria-label="AgriBuyX home">
+            <Link href="/" className="flex items-center gap-2" aria-label="AgriBuyX home">
               <Image src="/agribuyx_logo-02.svg" alt="AgriBuyX" width={140} height={32} className="h-8 w-auto" />
             </Link>
             <div className="flex items-center gap-3 text-xs font-medium text-slate-700 md:hidden flex-wrap">
@@ -619,10 +642,10 @@ export default function Products({ initialProducts, initialCategories, initialBl
 
             ) : (
               <>
-                <div className="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-4">
+                <div className="grid grid-cols-1 gap-3 min-[440px]:grid-cols-2 md:grid-cols-3 md:gap-4">
                   {filteredProducts.slice(0, visibleCount).map((product) => (
                     <Link key={product.id} href={productUrl(product)} className="group block">
-                      <article className="h-full overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition hover:border-emerald-200 hover:shadow-md">
+                      <article className="h-full overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm transition hover:border-emerald-200 hover:shadow-md">
 
                         {/* Product image — object-contain to avoid center-crop on portrait images */}
                         <div className="relative flex aspect-[4/3] w-full items-center justify-center overflow-hidden bg-slate-50">
@@ -643,22 +666,24 @@ export default function Products({ initialProducts, initialCategories, initialBl
                         </div>
 
                         <div className="p-3">
-                          <h3 className="mb-1.5 line-clamp-2 min-h-[2.5rem] text-sm font-semibold leading-5 text-slate-900">
+                          <div className="mb-2 flex items-center justify-between gap-2">
+                            <span className="truncate rounded-full bg-slate-100 px-2 py-1 text-[11px] font-semibold text-slate-600">
+                              {productCategoryLabel(product)}
+                            </span>
+                            <span className="shrink-0 rounded-full bg-emerald-50 px-2 py-1 text-[11px] font-semibold text-emerald-700">
+                              Available
+                            </span>
+                          </div>
+                          <h3 className="mb-2 line-clamp-2 min-h-[2.5rem] text-sm font-semibold leading-5 text-slate-950">
                             {product.title || 'Untitled product'}
                           </h3>
-                          <p className="mb-1.5 text-base font-bold text-emerald-700">
+                          <p className="text-lg font-bold text-emerald-700">
                             {formatPriceGHS(product.price)}
                           </p>
-                          {product.description && (
-                            <p className="mb-2 line-clamp-2 text-xs leading-5 text-slate-500">
-                              {product.description}
-                            </p>
-                          )}
-                          {product.location && (
-                            <p className="truncate border-t border-slate-100 pt-2 text-xs font-medium text-slate-500">
-                              📍 {product.location}
-                            </p>
-                          )}
+                          <div className="mt-2 flex items-center justify-between gap-2 border-t border-slate-100 pt-2 text-xs text-slate-500">
+                            <span className="truncate">{product.location || 'Ghana'}</span>
+                            <span className="shrink-0 font-semibold text-slate-600">View details</span>
+                          </div>
                         </div>
                       </article>
                     </Link>

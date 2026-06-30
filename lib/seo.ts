@@ -20,6 +20,10 @@ export function canonicalUrl(path: string): string {
   return `${base}${clean}`
 }
 
+function cleanLocation(location?: string | null): string {
+  return (location || '').trim().replace(/\s*,\s*/g, ', ')
+}
+
 // ─── Slug Generator ───────────────────────────────────────────────────────────
 
 /**
@@ -54,15 +58,18 @@ export interface ProductSeoInput {
   description?: string | null
   price?: number | string | null
   condition?: string | null
+  vendorName?: string | null
 }
 
 /**
  * Generate an SEO title for a product page.
- * Format: "Buy {Title} in {Country} | AgriBuyX"
+ * Format: "{Title} in {Location}, Ghana | AgriBuyX"
  */
 export function productSeoTitle(product: ProductSeoInput): string {
   const title = product.title?.trim() || 'Agricultural Product'
-  return `Buy ${title} in ${COUNTRY} | ${APP_NAME}`
+  const location = cleanLocation(product.location)
+  const place = location ? `${location}, ${COUNTRY}` : COUNTRY
+  return `${title} in ${place} | ${APP_NAME}`
 }
 
 /**
@@ -71,19 +78,30 @@ export function productSeoTitle(product: ProductSeoInput): string {
  */
 export function productSeoDescription(product: ProductSeoInput): string {
   const title = product.title?.trim() || 'Agricultural Product'
-  const location = product.location?.trim()
+  const location = cleanLocation(product.location)
   const category = product.category?.trim()
+  const vendor = product.vendorName?.trim()
+  const price = Number(product.price)
+  const hasPrice = Number.isFinite(price) && price > 0
+  const place = location ? `${location}, ${COUNTRY}` : COUNTRY
 
-  const parts: string[] = [`Buy ${title} in ${COUNTRY} from verified agricultural sellers on ${APP_NAME}.`]
+  const parts: string[] = [`Buy ${title} in ${place} on ${APP_NAME}.`]
 
-  if (category) {
+  if (product.description?.trim()) {
+    parts.push(product.description.trim())
+  }
+
+  if (hasPrice) {
+    parts.push(formatPriceGHS(product.price) + '.')
+  }
+
+  if (vendor) {
+    parts.push(`Listed by ${vendor}.`)
+  } else if (category) {
     parts.push(`Category: ${category}.`)
   }
-  if (location) {
-    parts.push(`Available in ${location}.`)
-  }
 
-  parts.push('Compare product details, condition, warranty, and contact the seller directly.')
+  parts.push('Contact the seller directly.')
 
   return parts.join(' ').slice(0, 160)
 }
@@ -94,7 +112,7 @@ export function productSeoDescription(product: ProductSeoInput): string {
  */
 export function productImageAlt(product: ProductSeoInput, index = 0): string {
   const title = product.title?.trim() || 'Agricultural product'
-  const location = product.location?.trim()
+  const location = cleanLocation(product.location)
   const suffix = location ? `in ${location}, ${COUNTRY}` : `in ${COUNTRY}`
   const imageLabel = index > 0 ? ` — image ${index + 1}` : ''
   return `${title} for sale ${suffix} on ${APP_NAME}${imageLabel}`
@@ -148,14 +166,14 @@ export interface CategorySeoInput {
 }
 
 export function categorySeoTitle(category: CategorySeoInput): string {
-  return `${category.name} Products in ${COUNTRY} | ${APP_NAME}`
+  return `${category.name} in ${COUNTRY} | ${APP_NAME}`
 }
 
 export function categorySeoDescription(category: CategorySeoInput): string {
   if (category.description?.trim()) {
     return category.description.trim().slice(0, 160)
   }
-  return `Browse ${category.name} products in ${COUNTRY} on ${APP_NAME}. Find verified sellers, compare prices, and contact farmers directly.`
+  return `Browse ${category.name} in ${COUNTRY} on ${APP_NAME}. Find trusted sellers, compare listings, and contact vendors directly.`
 }
 
 // ─── Marketplace Page SEO ─────────────────────────────────────────────────────
@@ -172,7 +190,7 @@ export const blogListingSeoDescription = `Practical farming tips, agricultural m
 
 export function formatPriceGHS(price?: number | string | null): string {
   const value = Number(price)
-  if (!Number.isFinite(value) || value <= 0) return 'Price on request'
+  if (!Number.isFinite(value) || value <= 0) return 'Contact for price'
   return `GHS ${value.toLocaleString('en-GH')}`
 }
 

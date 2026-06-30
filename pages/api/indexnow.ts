@@ -4,8 +4,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const key = process.env.INDEXNOW_KEY
 
   if (!key) {
-    // Fail safely if INDEXNOW_KEY is not configured
-    return res.status(200).json({ message: 'IndexNow is not configured on this environment.' })
+    return res.status(503).json({ error: 'IndexNow is not configured on this environment.' })
   }
 
   // Support single URL submission via GET /api/indexnow?url=...
@@ -18,7 +17,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     try {
       const parsedUrl = new URL(url)
-      if (parsedUrl.hostname !== 'agribuyx.com' && parsedUrl.hostname !== 'www.agribuyx.com') {
+      if (parsedUrl.protocol !== 'https:' || (parsedUrl.hostname !== 'agribuyx.com' && parsedUrl.hostname !== 'www.agribuyx.com')) {
         return res.status(400).json({ error: 'Only agribuyx.com URLs are allowed' })
       }
       
@@ -48,7 +47,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const validUrls = urls.filter((url: string) => {
       try {
         const parsedUrl = new URL(url)
-        return parsedUrl.hostname === 'agribuyx.com' || parsedUrl.hostname === 'www.agribuyx.com'
+        return parsedUrl.protocol === 'https:' && (parsedUrl.hostname === 'agribuyx.com' || parsedUrl.hostname === 'www.agribuyx.com')
       } catch {
         return false
       }

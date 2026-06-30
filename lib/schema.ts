@@ -45,7 +45,7 @@ export function organizationSchema() {
     name: APP_NAME,
     url: APP_URL,
     logo: `${APP_URL}/agribuyx_logo-02.svg`,
-    description: 'AgriBuyX is an agricultural marketplace in Ghana connecting farmers with verified sellers of farm inputs, equipment, and crop protection products.',
+    description: 'Agricultural marketplace in Ghana for farm inputs, equipment, and agricultural products.',
     areaServed: {
       '@type': 'Country',
       name: 'Ghana',
@@ -136,11 +136,16 @@ export function productSchema(product: ProductSchemaInput) {
     '@context': 'https://schema.org',
     '@type': 'Product',
     name: product.title,
+    alternateName: product.title,
     sku: product.id,
     url: productUrl,
     brand: {
       '@type': 'Brand',
       name: product.vendor_name || APP_NAME,
+    },
+    areaServed: {
+      '@type': 'Country',
+      name: 'Ghana',
     },
   }
 

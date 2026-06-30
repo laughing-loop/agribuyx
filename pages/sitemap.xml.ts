@@ -12,8 +12,9 @@
 
 import type { GetServerSideProps } from 'next'
 import { createClient } from '@supabase/supabase-js'
+import { CANONICAL_CATEGORIES } from '@/lib/categoryMap'
 
-const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://agribuyx.com'
+const BASE_URL = (process.env.NEXT_PUBLIC_APP_URL || 'https://agribuyx.com').replace(/\/$/, '')
 
 function xmlEscape(str: string): string {
   return str
@@ -50,13 +51,7 @@ ${urls.join('')}
 }
 
 export const getServerSideProps: GetServerSideProps = async ({ res }) => {
-  const supabaseServer = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
-
   const today = new Date().toISOString()
-
   const urls: string[] = []
 
   // ── Static pages ──────────────────────────────────────────────────────────
@@ -64,6 +59,18 @@ export const getServerSideProps: GetServerSideProps = async ({ res }) => {
   urls.push(url(`${BASE_URL}`, { changefreq: 'daily', priority: '1.0', lastmod: today }))
   urls.push(url(`${BASE_URL}/products`, { changefreq: 'hourly', priority: '0.9', lastmod: today }))
   urls.push(url(`${BASE_URL}/blog`, { changefreq: 'daily', priority: '0.8', lastmod: today }))
+  CANONICAL_CATEGORIES.forEach((category) => {
+    urls.push(url(`${BASE_URL}/categories/${category.slug}`, {
+      changefreq: 'weekly',
+      priority: '0.7',
+      lastmod: today,
+    }))
+  })
+
+  const supabaseServer = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
 
   // ── Products ──────────────────────────────────────────────────────────────
 
@@ -100,25 +107,6 @@ export const getServerSideProps: GetServerSideProps = async ({ res }) => {
         lastmod: post.updated_at || post.created_at,
         changefreq: 'weekly',
         priority: '0.7',
-      }))
-    }
-  }
-
-  // ── Categories ────────────────────────────────────────────────────────────
-
-  const { data: categories } = await supabaseServer
-    .from('categories')
-    .select('id, name, slug, created_at')
-    .is('parent_id', null) // main categories only
-    .order('name', { ascending: true })
-
-  if (categories) {
-    for (const cat of categories) {
-      const catSlug = cat.slug || cat.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')
-      urls.push(url(`${BASE_URL}/categories/${catSlug}`, {
-        lastmod: cat.created_at,
-        changefreq: 'weekly',
-        priority: '0.6',
       }))
     }
   }

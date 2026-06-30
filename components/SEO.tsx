@@ -28,8 +28,8 @@ interface SEOProps {
   canonical?: string
   /** OG image URL — full absolute URL or Cloudinary URL */
   ogImage?: string | null
-  /** og:type — defaults to "website", use "article" for blog posts */
-  ogType?: 'website' | 'article'
+  /** og:type — defaults to "website", use "article" for blog posts or "product" for listings */
+  ogType?: 'website' | 'article' | 'product'
   /** article:published_time ISO string — for blog posts */
   publishedTime?: string
   /** article:modified_time ISO string — for blog posts */

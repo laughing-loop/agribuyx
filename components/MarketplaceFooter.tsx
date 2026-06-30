@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import Image from 'next/image'
+import { sanitizeMarketplaceSocialLinks } from '@/lib/socialLinks'
 
 type SocialLinks = {
   whatsapp_channel_url?: string
@@ -14,16 +15,17 @@ export default function MarketplaceFooter({
   socialLinks?: SocialLinks
   onSupportClick?: () => void
 }) {
+  const safeSocialLinks = sanitizeMarketplaceSocialLinks(socialLinks)
   const hasSocialLinks =
-    Boolean(socialLinks.whatsapp_channel_url) ||
-    Boolean(socialLinks.tiktok_url) ||
-    Boolean(socialLinks.facebook_url)
+    Boolean(safeSocialLinks.whatsapp_channel_url) ||
+    Boolean(safeSocialLinks.tiktok_url) ||
+    Boolean(safeSocialLinks.facebook_url)
 
   return (
     <footer className="mt-16 border-t border-slate-200 bg-white">
       <div className="mx-auto grid max-w-7xl gap-8 px-4 py-8 md:grid-cols-12 md:py-10">
         <div className="md:col-span-4">
-          <Link href="/products" className="inline-flex items-center">
+          <Link href="/" className="inline-flex items-center">
             <Image
               src="/agribuyx_logo-02.svg"
               alt="AgriBuyX"
@@ -66,9 +68,9 @@ export default function MarketplaceFooter({
               )}
               {hasSocialLinks && (
                 <div className="flex flex-wrap gap-2 pt-2">
-                  {socialLinks.whatsapp_channel_url && <a href={socialLinks.whatsapp_channel_url} target="_blank" rel="noopener noreferrer" className="text-xs font-semibold text-slate-700 hover:text-emerald-700">WhatsApp</a>}
-                  {socialLinks.tiktok_url && <a href={socialLinks.tiktok_url} target="_blank" rel="noopener noreferrer" className="text-xs font-semibold text-slate-700 hover:text-emerald-700">TikTok</a>}
-                  {socialLinks.facebook_url && <a href={socialLinks.facebook_url} target="_blank" rel="noopener noreferrer" className="text-xs font-semibold text-slate-700 hover:text-emerald-700">Facebook</a>}
+                  {safeSocialLinks.whatsapp_channel_url && <a href={safeSocialLinks.whatsapp_channel_url} target="_blank" rel="noopener noreferrer" className="text-xs font-semibold text-slate-700 hover:text-emerald-700">WhatsApp</a>}
+                  {safeSocialLinks.tiktok_url && <a href={safeSocialLinks.tiktok_url} target="_blank" rel="noopener noreferrer" className="text-xs font-semibold text-slate-700 hover:text-emerald-700">TikTok</a>}
+                  {safeSocialLinks.facebook_url && <a href={safeSocialLinks.facebook_url} target="_blank" rel="noopener noreferrer" className="text-xs font-semibold text-slate-700 hover:text-emerald-700">Facebook</a>}
                 </div>
               )}
             </div>

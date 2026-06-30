@@ -28,6 +28,8 @@ import SEO from '@/components/SEO'
 import JsonLd from '@/components/JsonLd'
 import { productSeoTitle, productSeoDescription, productImageAlt, canonicalUrl, formatPriceGHS } from '@/lib/seo'
 import { productSchema, breadcrumbSchema } from '@/lib/schema'
+import { getCanonicalCategory, inferProductCanonicalCategorySlug } from '@/lib/categoryMap'
+import { sanitizeMarketplaceSocialLinks } from '@/lib/socialLinks'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -125,7 +127,7 @@ export const getServerSideProps: GetServerSideProps<Props> = async (context) => 
   if (productData.category_id) {
     const { data } = await supabaseServer
       .from('categories')
-      .select('id, name, icon, slug')
+      .select('id, name, icon')
       .eq('id', productData.category_id)
       .single()
     categoryData = data
@@ -241,13 +243,25 @@ export default function ProductDetail({ product, category, vendor, images, relat
 
   // ── SEO values ────────────────────────────────────────────────────────────
 
+  const inferredCategorySlug = inferProductCanonicalCategorySlug(product, category?.name)
+  const canonicalProductCategory = getCanonicalCategory(inferredCategorySlug)
+  const displayCategory = category || (canonicalProductCategory
+    ? {
+      id: canonicalProductCategory.slug,
+      name: canonicalProductCategory.name,
+      icon: canonicalProductCategory.icon,
+      slug: canonicalProductCategory.slug,
+    }
+    : null)
+
   const seoInput = {
     title: product.title,
-    category: category?.name,
+    category: displayCategory?.name,
     location: product.location,
     description: product.description,
     price: product.price,
     condition: product.condition,
+    vendorName: vendor?.business_name,
   }
 
   const seoTitle = productSeoTitle(seoInput)
@@ -271,7 +285,7 @@ export default function ProductDetail({ product, category, vendor, images, relat
     price: product.price,
     image_url: product.image_url,
     images: galleryImages.map((img) => img.image_url),
-    category: category?.name,
+    category: displayCategory?.name,
     condition: product.condition,
     location: product.location,
     slug: product.slug,
@@ -282,9 +296,16 @@ export default function ProductDetail({ product, category, vendor, images, relat
   const breadcrumbItems = [
     { name: 'Home', url: canonicalUrl('/') },
     { name: 'Marketplace', url: canonicalUrl('/products') },
-    ...(category ? [{ name: category.name, url: canonicalUrl('/products') }] : []),
+    ...(displayCategory
+      ? [{
+        name: displayCategory.name,
+        url: inferredCategorySlug ? canonicalUrl(`/categories/${inferredCategorySlug}`) : canonicalUrl('/products'),
+      }]
+      : []),
     { name: product.title, url: canonical },
   ]
+
+  const safeVendorLinks = sanitizeMarketplaceSocialLinks(vendor || {})
 
   // ── Handlers ──────────────────────────────────────────────────────────────
 
@@ -329,7 +350,7 @@ export default function ProductDetail({ product, category, vendor, images, relat
   }
 
   const whatsappContactUrl = (() => {
-    if (vendor?.whatsapp_url) return vendor.whatsapp_url
+    if (safeVendorLinks.whatsapp_url) return safeVendorLinks.whatsapp_url
     const raw = product.contact_phone || ''
     const digits = raw.replace(/[^0-9]/g, '')
     const message = encodeURIComponent(`Hello, I'm interested in ${product.title}`)
@@ -343,7 +364,7 @@ export default function ProductDetail({ product, category, vendor, images, relat
         description={seoDescription}
         canonical={canonical}
         ogImage={ogImage}
-        ogType="website"
+        ogType="product"
       />
       <JsonLd schema={productSchemaData} id="product-schema" />
       <JsonLd schema={breadcrumbSchema(breadcrumbItems)} id="breadcrumb-schema" />
@@ -374,14 +395,14 @@ export default function ProductDetail({ product, category, vendor, images, relat
         {/* Breadcrumb */}
         <nav aria-label="Breadcrumb" className="mb-4">
           <ol className="flex flex-wrap items-center gap-1 text-xs text-slate-500">
-            <li><Link href="/products" className="hover:text-emerald-700">Home</Link></li>
+            <li><Link href="/" className="hover:text-emerald-700">Home</Link></li>
             <li aria-hidden="true"><span className="mx-1">/</span></li>
-            <li><Link href="/products" className="hover:text-emerald-700">Products</Link></li>
-            {category && (
+            <li><Link href="/products" className="hover:text-emerald-700">Marketplace</Link></li>
+            {displayCategory && (
               <>
                 <li aria-hidden="true"><span className="mx-1">/</span></li>
                 <li>
-                  <span className="truncate max-w-[8rem] sm:max-w-xs">{category.icon} {category.name}</span>
+                  <span className="truncate max-w-[8rem] sm:max-w-xs">{displayCategory.icon} {displayCategory.name}</span>
                 </li>
               </>
             )}
@@ -460,10 +481,10 @@ export default function ProductDetail({ product, category, vendor, images, relat
 
           {/* CENTER: Product info */}
           <div className="md:col-span-4 lg:col-span-4 space-y-4">
-            {category && (
+            {displayCategory && (
               <div className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 border border-emerald-200 px-3 py-1 text-xs font-semibold text-emerald-800">
-                <span aria-hidden="true">{category.icon}</span>
-                <span>{category.name}</span>
+                <span aria-hidden="true">{displayCategory.icon}</span>
+                <span>{displayCategory.name}</span>
               </div>
             )}
 
@@ -625,9 +646,9 @@ export default function ProductDetail({ product, category, vendor, images, relat
                     WhatsApp seller
                   </a>
 
-                  {vendor?.facebook_url && (
+                  {safeVendorLinks.facebook_url && (
                     <a
-                      href={vendor.facebook_url}
+                      href={safeVendorLinks.facebook_url}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="flex items-center justify-center gap-2 rounded-lg bg-blue-800 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-900"
@@ -637,9 +658,9 @@ export default function ProductDetail({ product, category, vendor, images, relat
                     </a>
                   )}
 
-                  {vendor?.tiktok_url && (
+                  {safeVendorLinks.tiktok_url && (
                     <a
-                      href={vendor.tiktok_url}
+                      href={safeVendorLinks.tiktok_url}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="flex items-center justify-center gap-2 rounded-lg bg-slate-950 py-2.5 text-sm font-semibold text-white transition hover:bg-black"
@@ -649,9 +670,9 @@ export default function ProductDetail({ product, category, vendor, images, relat
                     </a>
                   )}
 
-                  {vendor?.instagram_url && (
+                  {safeVendorLinks.instagram_url && (
                     <a
-                      href={vendor.instagram_url}
+                      href={safeVendorLinks.instagram_url}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-purple-500 via-pink-500 to-orange-500 py-2.5 text-sm font-semibold text-white transition opacity-90 hover:opacity-100"
@@ -703,7 +724,7 @@ export default function ProductDetail({ product, category, vendor, images, relat
                       )}
                     </div>
                     <div className="p-3">
-                      <p className="mb-1 truncate text-xs text-slate-500">{category?.name || 'Product'}</p>
+                      <p className="mb-1 truncate text-xs text-slate-500">{displayCategory?.name || 'Product'}</p>
                       <h3 className="line-clamp-2 text-sm font-semibold text-slate-900">{item.title}</h3>
                       <p className="mt-1 text-sm font-bold text-emerald-700">{formatPriceGHS(item.price)}</p>
                       {item.location && (

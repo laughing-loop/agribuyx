@@ -78,7 +78,7 @@ export default function BlogPostPage({ post }: Props) {
       <div className="min-h-screen bg-slate-50">
         <nav className="border-b border-slate-200 bg-white shadow-sm">
           <div className="mx-auto max-w-7xl px-4 py-4 flex justify-between items-center">
-            <Link href="/products" className="flex items-center gap-2">
+            <Link href="/" className="flex items-center gap-2">
               <Image src="/agribuyx_logo-02.svg" alt="AgriBuyX" width={140} height={32} className="h-8 w-auto" />
             </Link>
           </div>
@@ -219,7 +219,7 @@ export default function BlogPostPage({ post }: Props) {
               {/* Breadcrumb */}
               <nav aria-label="Breadcrumb" className="mb-3">
                 <ol className="flex items-center gap-2 text-xs text-white/70">
-                  <li><Link href="/products" className="hover:text-white">Home</Link></li>
+                  <li><Link href="/" className="hover:text-white">Home</Link></li>
                   <li aria-hidden="true">/</li>
                   <li><Link href="/blog" className="hover:text-white">Blog</Link></li>
                   <li aria-hidden="true">/</li>

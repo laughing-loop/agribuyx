@@ -1,10 +1,17 @@
+const indexNowKey = process.env.INDEXNOW_KEY || 'd428a576ae7f438bbb80ca6edacd1b33'
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
     reactStrictMode: true,
 
     // Allow next/image to optimise images from Cloudinary
     images: {
-        domains: ['res.cloudinary.com'],
+        remotePatterns: [
+            {
+                protocol: 'https',
+                hostname: 'res.cloudinary.com',
+            },
+        ],
         formats: ['image/avif', 'image/webp'],
     },
 
@@ -31,21 +38,8 @@ const nextConfig = {
     async rewrites() {
         return [
             {
-                // This allows Bing to request /[INDEXNOW_KEY].txt and we serve it dynamically
-                source: '/:key',
-                has: [
-                    {
-                        type: 'query',
-                        key: 'key',
-                        value: '(?<keyval>.*\\.txt$)', // only match .txt
-                    },
-                ],
-                destination: '/api/indexnow-key',
-            },
-            // Fallback for when the query param match isn't perfect in some environments:
-            {
-                source: '/:path*.txt',
-                destination: '/api/indexnow-key?path=:path*',
+                source: `/${indexNowKey}.txt`,
+                destination: `/api/indexnow-key?path=${indexNowKey}`,
             }
         ]
     },
